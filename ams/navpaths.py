@@ -1,0 +1,42 @@
+"""Sidebar page-id -> URL path map (mirrors the original amsHref)."""
+
+NAV_PATHS = {
+    "dashboard": "/dashboard/",
+    "employees": "/employees/",
+    "assets": "/assets/",
+    "mobiles": "/mobiles/",
+    "asset-distribution": "/distribution/",
+    "sim-cards": "/sim-cards/",
+    "consumables": "/consumables/",
+    "spare-parts": "/spare-parts/",
+    "accessories": "/accessories/",
+    "vendors": "/vendors/",
+    "reports": "/reports/",
+    "system-admin": "/system-admin/",
+    "user-master": "/users/",
+    "settings": "/settings/",
+}
+
+MASTER_PATHS = {
+    "assetType": "/masters/asset-type/",
+    "assetMake": "/masters/asset-make/",
+    "assetCategory": "/masters/asset-category/",
+    "site": "/masters/site/",
+    "department": "/masters/department/",
+    "designation": "/masters/designation/",
+    "simOperator": "/masters/sim-operator/",
+    "simPlan": "/masters/sim-plan/",
+    "consumableCategory": "/masters/consumable-category/",
+    "unitOfMeasure": "/masters/unit-of-measure/",
+    "sparePartCategory": "/masters/spare-part-category/",
+    "vendorCategory": "/masters/vendor-category/",
+    "printTerms": "/masters/print-terms/",
+    "accessory": "/accessories/",
+    "vendors": "/vendors/",
+    "company": "/company/",
+    "userMaster": "/users/",
+    "accessRights": "/access-rights/",
+    "roleAccess": "/role-access/",
+    "log": "/logs/",
+    "labelPassPrint": "/label-pass-print/",
+}
