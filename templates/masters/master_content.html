@@ -1,0 +1,160 @@
+{% load ams_extras %}
+<div class="card">
+  <div class="filter-bar">
+    <form method="get" action="/masters/{{ key }}/" class="flex" style="gap:9px; flex:1;">
+      <div class="f"><span>Search</span><input class="input" type="text" name="q" value="{{ q }}" placeholder="Search {{ title }}..."></div>
+      <button class="btn sm" type="submit">Apply</button>
+      <a class="btn sm ghost" href="/masters/{{ key }}/">Clear</a>
+    </form>
+    <div class="btn-row no-print">
+      {% if can_write %}<button class="btn primary" data-open-modal="m-master">&#43; Add Record</button>{% endif %}
+      <a class="btn sm" href="/masters/{{ key }}/csv/template/">CSV Template</a>
+      <a class="btn sm" href="/masters/{{ key }}/csv/export/">Export CSV</a>
+      {% if can_write %}<button class="btn" data-open-modal="m-import">Import CSV</button>{% endif %}
+    </div>
+  </div>
+
+  {% if import_report %}
+  <div class="card-head" style="background: var(--bg-inset);"><h2>Import Report - {{ import_report.title }}</h2><span class="spacer"></span><span class="head-sub">{{ import_report.rows|length }} row(s)</span></div>
+  <div class="card-body flush table-wrap">
+    <table class="ams import-report"><thead><tr><th>#</th><th>Result</th><th>Reason</th></tr></thead>
+    <tbody>{% for r in import_report.rows %}<tr><td>{{ r.no }}</td><td class="result-{{ r.result }}">{{ r.result }}</td><td>{{ r.reason|default:"-" }}</td></tr>{% endfor %}</tbody></table>
+  </div>
+  {% endif %}
+
+  <div class="card-body flush table-wrap">
+    <table class="ams">
+      <thead>
+        <tr>
+          {% for f in fields_ui %}{% if f.name != 'active' %}<th>{{ f.label }}</th>{% endif %}{% endfor %}
+          <th>Status</th>
+          {% if cfg.usage %}<th>Used By</th>{% endif %}
+          <th class="no-print right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr {% if not r.active %}style="opacity:.5;"{% endif %}>
+          {% for f in fields_ui %}{% if f.name != 'active' %}
+            {% if f.type == 'select' %}<td>{{ r.vals|get_item:f.name }}</td>
+            {% elif f.name == 'shortform' %}<td class="mono">{{ r.vals|get_item:f.name }}</td>
+            {% else %}<td>{{ r.vals|get_item:f.name }}</td>{% endif %}
+          {% endif %}{% endfor %}
+          <td>{% if r.active %}{{ "Active"|asset_badge }}{% else %}{{ "Inactive"|asset_badge }}{% endif %}</td>
+          {% if cfg.usage %}<td class="num">{{ r.usage }}</td>{% endif %}
+          <td class="actions-cell no-print">
+            {% if can_write %}
+              <button class="btn sm ghost" data-open-modal="m-master" data-edit="{{ r.pk }}">Edit</button>
+              {% if r.usage > 0 %}
+                <span class="badge badge-grey" title="In use - deactivate instead">In use</span>
+              {% else %}
+                <form method="post" action="/masters/{{ key }}/delete/" style="display:inline;" data-confirm="Delete this record?">
+                  {% csrf_token %}<input type="hidden" name="pk" value="{{ r.pk }}">
+                  <button class="btn sm danger" type="submit">Delete</button>
+                </form>
+              {% endif %}
+              <form method="post" action="/masters/{{ key }}/toggle/" style="display:inline;">
+                {% csrf_token %}<input type="hidden" name="pk" value="{{ r.pk }}">
+                <button class="btn sm ghost" type="submit">{% if r.active %}Deactivate{% else %}Activate{% endif %}</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9"><div class="empty-state">No records yet. Use "Add Record".</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if can_write %}
+<dialog class="modal" id="m-master">
+  <form method="post" action="/masters/{{ key }}/save/">
+    {% csrf_token %}
+    <div class="modal-head"><h3 id="master-modal-title">Add Record</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        {% for f in fields_ui %}
+          {% if f.type == 'select' %}
+          <label class="field"><span class="lbl">{{ f.label }}{% if f.required %} <span class="req">*</span>{% endif %}</span>
+            <select class="input" name="{{ f.name }}" {% if f.required %}required{% endif %}>
+              <option value="">- Select -</option>
+              {% for pk, label in f.choices %}<option value="{{ pk }}">{{ label }}</option>{% endfor %}
+            </select></label>
+          {% elif f.type == 'choices' %}
+          <label class="field"><span class="lbl">{{ f.label }}{% if f.required %} <span class="req">*</span>{% endif %}</span>
+            <select class="input" name="{{ f.name }}" {% if f.required %}required{% endif %}>
+              {% for pk, label in f.choices %}<option value="{{ pk }}">{{ label }}</option>{% endfor %}
+            </select></label>
+          {% elif f.type == 'textarea' %}
+          <label class="field full"><span class="lbl">{{ f.label }}{% if f.required %} <span class="req">*</span>{% endif %}</span>
+            <textarea class="input" name="{{ f.name }}" {% if f.required %}required{% endif %} {% if f.help %}maxlength="1000"{% endif %}></textarea></label>
+          {% elif f.type == 'number' %}
+          <label class="field"><span class="lbl">{{ f.label }}{% if f.required %} <span class="req">*</span>{% endif %}</span>
+            <input class="input" type="number" name="{{ f.name }}" {% if f.required %}required{% endif %}></label>
+          {% elif f.type == 'shortform' %}
+          <label class="field"><span class="lbl">{{ f.label }}{% if f.required %} <span class="req">*</span>{% endif %}</span>
+            <input class="input mono" name="{{ f.name }}" maxlength="4" style="text-transform:uppercase;" {% if f.required %}required{% endif %}></label>
+          {% else %}
+          <label class="field"><span class="lbl">{{ f.label }}{% if f.required %} <span class="req">*</span>{% endif %}</span>
+            <input class="input" name="{{ f.name }}" {% if f.required %}required{% endif %}></label>
+          {% endif %}
+          {% if f.help %}<div class="small muted" style="grid-column: 1 / -1; margin-top: -8px;">{{ f.help }}</div>{% endif %}
+        {% endfor %}
+        <label class="field full"><span class="lbl" style="display:flex; gap:8px; align-items:center;">
+          <input type="checkbox" name="active" value="1" checked> Active</span></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Save Record</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="modal" id="m-import">
+  <form method="post" action="/masters/{{ key }}/csv/import/" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Import (CSV)</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <p class="small muted">Headers follow the CSV Template (* = required). Rows are matched and upserted.</p>
+      <input class="input" type="file" name="file" accept=".csv,text/csv" required>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Import</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+document.addEventListener("click", function (e) {
+  var opener = e.target.closest("[data-open-modal]");
+  if (!opener || opener.getAttribute("data-open-modal") !== "m-master") return;
+  var edit = opener.getAttribute("data-edit");
+  var form = document.querySelector("#m-master form");
+  if (edit) {
+    var r = {{ rows_json|default:"[]" }};
+    var row = r[edit];
+    document.getElementById("master-modal-title").textContent = "Edit Record";
+    if (!form.querySelector("[name=pk]")) { var h = document.createElement("input"); h.type = "hidden"; h.name = "pk"; form.appendChild(h); }
+    form.querySelector("[name=pk]").value = edit;
+    if (row) {
+      Object.keys(row).forEach(function (k) {
+        var el = form.querySelector("[name=" + k + "]");
+        if (el) el.value = row[k];
+      });
+      var act = form.querySelector("[name=active]");
+      if (act) act.checked = row.active !== false;
+    }
+  } else {
+    document.getElementById("master-modal-title").textContent = "Add Record";
+    form.reset();
+    var pkInput = form.querySelector("[name=pk]"); if (pkInput) pkInput.remove();
+  }
+});
+</script>
+{% endif %}

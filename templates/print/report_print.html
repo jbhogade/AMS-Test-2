@@ -1,0 +1,71 @@
+{% extends "print/base_print.html" %}
+{% load ams_extras %}
+{% block print_body %}
+<div class="pf-doc">
+  <div class="pf-header">
+    {% if prefs.show_logo and company.logo %}<img class="pf-logo" src="{{ company.logo.url }}" alt="logo">{% endif %}
+    <div class="pf-company-block">
+      {% if prefs.show_name %}<div class="pf-company">{{ company.name }}</div>{% endif %}
+      {% if prefs.show_slogan and company.slogan %}<div class="pf-company-tag">{{ company.slogan }}</div>{% endif %}
+    </div>
+    <div class="pf-formmeta">
+      <div class="pf-form-title">{{ tab_title|upper }}</div>
+      <div><strong>Generated:</strong> {{ today }}</div>
+    </div>
+  </div>
+
+  {% if tab == 'assetLifecycle' %}
+  <table class="pf-asset-table">
+    <thead><tr><th>Date</th><th>Type</th><th>Action</th><th>Asset ID</th><th>Item</th><th>Employee</th><th>Department</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for e in events %}
+      <tr><td class="mono">{{ e.date|dmy }}</td><td>{{ e.event_type }}</td><td>{{ e.action }}</td><td class="mono">{{ e.item_label }}</td>
+        <td>{{ e.item_kind|capfirst }}</td><td>{{ e.emp_label|default:"-" }}</td><td>{{ e.emp_dept|default:"-" }}</td><td>{{ e.status_label }}</td></tr>
+      {% empty %}<tr><td colspan="8">No events match these filters.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  {% elif tab == 'assetIssue' or tab == 'assetHandover' %}
+  <table class="pf-asset-table">
+    <thead><tr><th>Emp Code</th><th>Employee Name</th><th>Status</th><th>Department</th><th>Asset ID</th><th>Asset Type</th><th>Site</th></tr></thead>
+    <tbody>
+      {% for h in holdings %}
+      <tr><td class="mono">{{ h.emp.display_emp_id }}</td><td>{{ h.emp.name }}</td><td>{{ h.emp.status }}</td>
+        <td>{{ h.emp.department.name|default:"-" }}</td><td class="mono">{{ h.pid }}</td>
+        <td>{{ h.a.type.name|default:"-" }}</td><td>{{ h.a.current_site.name|default:"-" }}</td></tr>
+      {% empty %}<tr><td colspan="7">No records match these filters.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  {% elif tab == 'consumableRestock' or tab == 'consumableUsed' or tab == 'sparePartsRestock' or tab == 'sparePartsUsed' %}
+  <table class="pf-asset-table">
+    <thead><tr><th>Date</th><th>Item</th><th>Site</th><th>Qty</th><th>{% if tab|slice:'-7:' == 'Restock' %}Vendor{% else %}Used By{% endif %}</th>
+      {% if show_asset_col %}<th>Used For Asset</th>{% endif %}<th>Remarks</th></tr></thead>
+    <tbody>
+      {% for m in moves %}
+      <tr><td class="mono">{{ m.date|dmy }}</td><td>{{ m.name }}</td><td>{{ m.site|default:"-" }}</td><td>{{ m.qty }}</td>
+        <td>{{ m.by|default:"-" }}</td>{% if show_asset_col %}<td class="mono">{{ m.asset_id_snapshot|default:"-" }}</td>{% endif %}
+        <td>{{ m.remarks|default:"-" }}</td></tr>
+      {% empty %}<tr><td colspan="7">No records match these filters.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  {% elif tab == 'assetDistribution' %}
+  <table class="pf-asset-table">
+    <thead><tr><th>Emp ID</th><th>Employee Name</th><th>Department</th><th>Designation</th><th>Direct</th><th>Team</th><th>Total</th></tr></thead>
+    <tbody>
+      {% for r in dist_rows %}
+      <tr><td class="mono">{{ r.emp.display_emp_id }}</td><td>{{ r.emp.name }}</td>
+        <td>{{ r.emp.department.name|default:"-" }}</td><td>{{ r.emp.designation|default:"-" }}</td>
+        <td>{{ r.direct }}</td><td>{{ r.team }}</td><td>{{ r.total }}</td></tr>
+      {% empty %}<tr><td colspan="7">No employees match the current filters.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <div class="pf-footer">
+    <span>AMS-Test-2 &middot; Generated electronically from Report Master</span>
+    <span>{{ tab_title }}</span>
+  </div>
+</div>
+{% endblock %}

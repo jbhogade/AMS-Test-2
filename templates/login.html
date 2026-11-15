@@ -1,0 +1,58 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en" data-theme="graphite">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in - Asset Manager</title>
+  <link rel="stylesheet" href="{% static 'css/ams.css' %}">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-hero">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="brand" style="padding:0;">
+      <div class="brand-glyph">A</div>
+      <div>
+        <div class="brand-name" style="font-size:1.05rem;">Asset Manager</div>
+        <div class="brand-sub" style="color:#7fa3c0;">AMS-Test-2 &middot; Django Portal</div>
+      </div>
+    </div>
+    <h1>Every asset,<br>accounted for.</h1>
+    <p>The Asset Management System portal for assets, mobiles, SIM cards, consumables, spare parts and accessories - with full lifecycle, prints and reports.</p>
+    <ul class="hero-points">
+      <li><span class="tick">&#10003;</span> Smart Display IDs (base + site + department)</li>
+      <li><span class="tick">&#10003;</span> Issue / Handover / Gate Pass printing</li>
+      <li><span class="tick">&#10003;</span> Role-gated pages with an audit trail</li>
+    </ul>
+  </div>
+  <div class="login-form-side">
+    <div class="login-card">
+      <h2>Sign in</h2>
+      <p class="sub">Ask your administrator for credentials. This is the AMS-Test-2 portal.</p>
+      {% if messages %}
+        {% for message in messages %}
+          <div class="toast {{ message.tags }}" style="margin-bottom:12px;">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+      <form method="post" action="/login/">
+        {% csrf_token %}
+        <label class="field">
+          <span class="lbl">Username</span>
+          <input class="input" type="text" name="username" autofocus autocomplete="username" placeholder="e.g. testadmin">
+        </label>
+        <label class="field">
+          <span class="lbl">Password</span>
+          <span class="pw-input">
+            <input class="input" type="password" name="password" autocomplete="current-password" placeholder="Your password">
+            <span class="toggle pw-toggle">Show</span>
+          </span>
+        </label>
+        <button class="btn primary" type="submit" style="width:100%; justify-content:center; padding:10px;">Sign in</button>
+      </form>
+      <p class="hint-line">Seeded accounts: operator.sys (Supreme Root) &middot; testadmin (Super Root)</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

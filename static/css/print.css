@@ -1,0 +1,87 @@
+/* =============================================================================
+   AMS-Test-2 Print stylesheet (.pf-* engine)
+   Mirrors print-docs.js from the original portal: A4, letterhead, section
+   bars, boxed grids, asset tables, checklists, signatures, footer.
+   ============================================================================= */
+
+.pf-doc { font-family: "Inter", -apple-system, "Segoe UI", Arial, sans-serif; color: #111; font-size: 12.5px; padding: 26px 34px; }
+
+.pf-header { display: flex; align-items: center; gap: 14px; padding-bottom: 10px; border-bottom: 3px solid #111; margin-bottom: 14px; }
+.pf-logo { width: 42px; height: 42px; object-fit: contain; }
+.pf-company-block { flex: 1; min-width: 0; }
+.pf-company { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+.pf-company-tag { font-size: 11.5px; font-style: italic; color: #444; }
+.pf-header-banner { display: block; }
+.pf-banner-wrap { text-align: center; margin-bottom: 8px; }
+.pf-banner { max-height: 110px; max-width: 100%; border: 1px solid #ccc; padding: 4px; }
+.pf-banner-caption { display: inline-block; text-align: center; }
+.pf-formmeta { text-align: right; font-size: 11.5px; color: #333; line-height: 1.5; min-width: 220px; }
+.pf-form-title { font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+.pf-title-issue { color: #1a3d6d; }
+.pf-title-handover { color: #c0392b; }
+
+.pf-section-bar { background: #111; color: #fff; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.09em; padding: 5px 10px; border-radius: 3px; margin: 14px 0 8px; }
+.pf-section-bar.accent { background: #c0392b; }
+
+.pf-box-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.pf-box-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.pf-box { border: 1px solid #999; border-radius: 4px; padding: 6px 9px; }
+.pf-box-wide { grid-column: 1 / -1; }
+.pf-box-label { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.07em; color: #666; font-weight: 700; }
+.pf-box-value { font-size: 12.5px; font-weight: 600; margin-top: 2px; }
+.pf-box-line { border-bottom: 1px solid #333; height: 22px; margin-top: 4px; }
+
+.pf-asset-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.pf-asset-table th, .pf-asset-table td { border: 1px solid #999; padding: 5px 8px; text-align: left; vertical-align: top; }
+.pf-asset-table th { background: #f0f0f0; text-transform: uppercase; font-size: 10.5px; letter-spacing: 0.05em; }
+.pf-asset-table td.pf-wrap { word-break: break-word; max-width: 7.2em; }
+.mono { font-family: Consolas, Menlo, "Courier New", monospace; font-size: 11px; }
+
+.pf-check-inline { display: flex; gap: 12px; font-size: 11px; color: #333; }
+.pf-check-inline span::before { content: "[   ]  "; font-weight: 700; }
+.pf-checklist-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; border: 1px solid #999; border-radius: 4px; padding: 9px 12px; font-size: 11.5px; }
+
+.pf-notes-box { border: 1px solid #999; border-radius: 4px; padding: 9px 12px; font-size: 11.5px; line-height: 1.6; }
+.pf-notes-empty { color: #666; font-style: italic; }
+.pf-additional-box { background: #fdf6ec; border: 1px solid #e0c9a0; border-left: 4px solid #c0392b; border-radius: 4px; padding: 10px 12px; min-height: 64px; font-size: 11.5px; }
+.pf-additional-sign { border-top: 1px dashed #b39b6f; margin-top: 26px; padding-top: 7px; display: flex; justify-content: space-between; font-size: 11px; color: #444; }
+
+.pf-declaration { margin: 6px 0 0 18px; padding: 0; font-size: 11px; color: #222; line-height: 1.55; }
+.pf-declaration li { margin-bottom: 3px; }
+
+.pf-sign-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 26px; margin-top: 26px; }
+.pf-sign-box { text-align: center; font-size: 11px; color: #333; }
+.pf-sign-line { border-bottom: 1px solid #333; height: 40px; margin-bottom: 5px; }
+.pf-sign-label { font-weight: 600; }
+
+.pf-footer { display: flex; justify-content: space-between; border-top: 1px solid #bbb; margin-top: 20px; padding-top: 6px; font-size: 9.5px; color: #777; }
+
+/* gate pass cards */
+.gp-sheet { display: flex; flex-wrap: wrap; gap: 10px; }
+.gp-card { border: 2px solid #111; border-radius: 6px; width: 520px; padding: 10px 14px 12px; font-size: 13px; page-break-inside: avoid; }
+.gp-title { text-align: center; font-weight: 800; font-size: 16px; margin-bottom: 8px; }
+.gp-line { margin: 3px 0; }
+.gp-stamp { text-align: right; font-weight: 800; margin-top: 14px; }
+
+/* A4 sticker sheet: 7 cols x 16 rows, 26mm x 17.6875mm labels */
+@page { size: A4 portrait; margin: 0; }
+.label-page { width: 210mm; height: 297mm; padding: 7mm 4mm 7mm 6mm;
+  display: grid; grid-template-columns: repeat(7, 26mm); grid-template-rows: repeat(16, 17.6875mm);
+  column-gap: 3mm; row-gap: 0; page-break-after: always; box-sizing: border-box; }
+.label-cell { width: 26mm; height: 17.6875mm; border: 0.3mm solid #111; border-radius: 2mm;
+  display: flex; align-items: center; justify-content: center; padding: 0.7mm 0.8mm; overflow: hidden; box-sizing: border-box; }
+.label-cell.empty { border-color: transparent; }
+.label-id { font-family: Consolas, Menlo, "Courier New", monospace; font-size: 4.8mm; font-weight: 700;
+  line-height: 1.12; text-align: center; overflow-wrap: anywhere; word-break: break-word; }
+
+@media print {
+  body { margin: 0; }
+  .pf-doc { padding: 10mm 12mm; }
+  .pf-doc.landscape { padding: 10mm 14mm; }
+  .no-print { display: none !important; }
+  a { text-decoration: none; color: inherit; }
+}
+.print-toolbar { position: fixed; top: 14px; right: 14px; display: flex; gap: 8px; z-index: 50; }
+.print-toolbar button { font: inherit; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 9px;
+  border: 1px solid #cbd5e1; background: #fff; cursor: pointer; }

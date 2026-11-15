@@ -1,0 +1,109 @@
+{% extends "base_shell.html" %}
+{% load ams_extras %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block page_sub %}Portal preferences - appearance, general, notifications and data.{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="tabbar">
+    <button class="active" data-tab="appearance">Appearance</button>
+    <button data-tab="general">General</button>
+    <button data-tab="notifications">Notifications</button>
+    <button data-tab="data">Data</button>
+  </div>
+
+  <div class="card-body" id="tab-appearance">
+    <h3 style="font-size:.88rem;">Theme</h3>
+    <p class="small muted">Nine palettes. Your choice is stored per signed-in username.</p>
+    <form method="post" action="/settings/save/" id="theme-form">
+      {% csrf_token %}<input type="hidden" name="tab" value="appearance">
+      <div class="hub-grid">
+        {% for tid, tname, tkind, tdesc in themes %}
+        <label class="hub-tile" onclick="pickTheme('{{ tid }}')">
+          <span class="flex">
+            <input type="radio" name="theme" value="{{ tid }}" {% if prof.theme == tid %}checked{% endif %} onchange="pickTheme('{{ tid }}')">
+            <strong class="t">{{ tname }}</strong>
+            <span class="badge {% if tkind == 'light' %}badge-amber{% else %}badge-grey{% endif %}">{{ tkind|capfirst }}</span>
+          </span>
+          <span class="d">{{ tdesc }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <h3 style="font-size:.88rem; margin-top:18px;">Font Size</h3>
+      <div class="btn-row">
+        <label class="flex" style="gap:5px;"><input type="radio" name="font_size" value="sm" {% if prof.font_size == 'sm' %}checked{% endif %}> Small</label>
+        <label class="flex" style="gap:5px;"><input type="radio" name="font_size" value="md" {% if prof.font_size == 'md' %}checked{% endif %}> Medium</label>
+        <label class="flex" style="gap:5px;"><input type="radio" name="font_size" value="lg" {% if prof.font_size == 'lg' %}checked{% endif %}> Large</label>
+        <button class="btn primary sm" type="submit">Save Appearance</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card-body" id="tab-general" style="display:none;">
+    <h3 style="font-size:.88rem;">Portal</h3>
+    <form method="post" action="/settings/save/">
+      {% csrf_token %}<input type="hidden" name="tab" value="general">
+      <div class="form-grid" style="max-width:520px;">
+        <label class="field"><span class="lbl">Portal Name (shown in the sidebar brand)</span>
+          <input class="input" name="portal_name" maxlength="60" value="{{ portal_name }}"></label>
+        <label class="field"><span class="lbl">Default List Page Size</span>
+          <select class="input" name="page_size">
+            {% for p in '10,20,50,100'|split:',' %}<option value="{{ p }}" {% if prof.page_size|stringformat:'s' == p %}selected{% endif %}>{{ p }} rows</option>{% endfor %}
+          </select></label>
+        <div class="detail-cell full"><div class="l">Currency</div>
+          <div class="v small muted">Displayed amounts use Indian Rupees (₹). Example: {{ 1234567.89|inr }}</div></div>
+      </div>
+      <button class="btn primary" type="submit">Save General</button>
+    </form>
+  </div>
+
+  <div class="card-body" id="tab-notifications" style="display:none;">
+    <h3 style="font-size:.88rem;">Popups &amp; History</h3>
+    <form method="post" action="/settings/save/">
+      {% csrf_token %}<input type="hidden" name="tab" value="notifications">
+      <label class="field" style="display:flex; gap:8px; align-items:center;">
+        <input type="checkbox" name="toast_enabled" value="1" {% if prof.toast_enabled %}checked{% endif %}>
+        Show toast popup notifications
+      </label>
+      <p class="small muted">Off hides the popups only - notifications and the activity log still record everything.</p>
+      <div class="status-tiles">
+        <div class="status-tile"><div class="v">{{ counts.moves }}</div><div class="l">Stock Movements</div></div>
+        <div class="status-tile"><div class="v">{{ counts.activity }}</div><div class="l">Activity Log Entries</div></div>
+      </div>
+      <label class="field" style="display:flex; gap:8px; align-items:center;">
+        <input type="checkbox" name="clear_activity" value="1"> Clear the activity log
+      </label>
+      <button class="btn primary" type="submit">Save Notifications</button>
+    </form>
+  </div>
+
+  <div class="card-body" id="tab-data" style="display:none;">
+    <h3 style="font-size:.88rem;">Signed-in Role</h3>
+    <div class="form-grid" style="max-width:420px;">
+      <label class="field"><span class="lbl">Current Role</span>
+        <input class="input" value="{{ role }}" disabled></label>
+    </div>
+    <p class="small muted">Your role comes from the account used to log in. Use the user menu (top right) to switch accounts.</p>
+  </div>
+</div>
+
+<script>
+document.querySelector(".tabbar").addEventListener("click", function (e) {
+  var btn = e.target.closest("button");
+  if (!btn) return;
+  document.querySelectorAll(".tabbar button").forEach(function (b) { b.classList.remove("active"); });
+  btn.classList.add("active");
+  ["appearance", "general", "notifications", "data"].forEach(function (t) {
+    document.getElementById("tab-" + t).style.display = t === btn.getAttribute("data-tab") ? "" : "none";
+  });
+});
+function pickTheme(id) {
+  var form = document.getElementById("theme-form");
+  form.querySelector("input[name=theme]").checked = true;
+  // live preview
+  document.documentElement.setAttribute("data-theme", id);
+  form.submit();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "base_shell.html" %}
+{% load ams_extras %}
+{% block title %}{{ title }} - {{ portal_name }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_sub %}Lookup master - records feed the pick-lists across the portal. Delete is guarded by usage.{% endblock %}
+
+{% block content %}
+{% include "masters/master_content.html" %}
+{% endblock %}

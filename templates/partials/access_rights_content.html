@@ -1,0 +1,50 @@
+{% load ams_extras %}
+<div id="access-rights-panel">
+  <div class="card" style="margin-bottom:0; {% if hub %}box-shadow:none;{% endif %}">
+    <div class="card-head"><h2>Access Rights Control Master</h2><span class="spacer"></span>
+      <span class="head-sub">Per-user page access. Role-locked pages are marked.</span></div>
+    <div class="card-body" style="padding: 10px 16px 0;">
+      <div class="viewing-bar" style="margin-bottom:10px;">
+        <span>Signed-in Role:</span>{{ role|role_badge }}
+        <span class="small muted">Only Supreme Root can edit access rights.</span>
+      </div>
+    </div>
+    <div class="card-body flush table-wrap">
+      <table class="ams">
+        <thead><tr><th>Username</th><th>Role</th><th>Access</th><th class="no-print right">Actions</th></tr></thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td class="mono"><strong>{{ row.prof.user.username }}</strong></td>
+            <td>{{ row.prof.role|role_badge }}</td>
+            <td>
+              <span class="badge {% if row.custom and row.count == 0 %}badge-red{% else %}badge-grey{% endif %}">
+                {{ row.count }} / {{ total }} pages ({% if row.custom %}Custom{% else %}Role Default{% endif %})
+              </span>
+            </td>
+            <td class="actions-cell no-print">
+              {% if can_write %}
+                <button class="btn sm ghost" hx-get="/access-rights/{{ row.prof.pk }}/edit/" hx-target="#ar-modal-body" data-open-modal="m-ar">Edit Access</button>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4"><div class="empty-state">No accounts visible.</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<dialog class="modal wide" id="m-ar">
+  <div class="modal-head"><h3>Edit Access</h3>
+    <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+  <div class="modal-body" id="ar-modal-body"><span class="spinner"></span></div>
+</dialog>
+
+<script>
+document.body.addEventListener("htmx:afterSwap", function (e) {
+  if (e.detail.target.id === "ar-modal-body") openModal("m-ar");
+});
+</script>

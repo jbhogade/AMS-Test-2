@@ -1,0 +1,298 @@
+{% extends "base_shell.html" %}
+{% load ams_extras %}
+{% block title %}Employees - {{ portal_name }}{% endblock %}
+{% block page_title %}Employee Master{% endblock %}
+{% block page_sub %}Company employees with AMS IDs, managers and holdings.{% endblock %}
+
+{% block content %}
+<div class="viewing-bar no-print"><span>Signed-in Role:</span> {{ ams_role|role_badge }}</div>
+
+<div class="card">
+  <div class="filter-bar">
+    <form method="get" action="/employees/" class="flex" style="gap:9px; flex:1;">
+      <div class="f"><span>Search</span>
+        <input class="input" type="text" name="q" value="{{ q }}" placeholder="Name, Employee ID, AMS ID, designation...">
+      </div>
+      <div class="f"><span>Department</span>
+        <select class="input" name="dept">
+          <option value="">All</option>
+          {% for d in departments %}<option value="{{ d.name }}" {% if dept_f == d.name %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="f"><span>Status</span>
+        <select class="input" name="status">
+          <option value="">All</option>
+          <option value="Active" {% if status_f == 'Active' %}selected{% endif %}>Active</option>
+          <option value="Inactive" {% if status_f == 'Inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+      </div>
+      <button class="btn sm" type="submit">Apply</button>
+      <a class="btn sm ghost" href="/employees/">Clear</a>
+    </form>
+    <div class="btn-row no-print">
+      {% if can_write %}<button class="btn primary" data-open-modal="m-emp">&#43; Add Employee</button>{% endif %}
+      <a class="btn sm" href="/employees/csv/template/">CSV Template</a>
+      <a class="btn sm" href="/employees/csv/export/">Export CSV</a>
+      <a class="btn sm" href="/employees/csv/export-xlsx/">Export Excel</a>
+      {% if can_write %}
+      <button class="btn" data-open-modal="m-import">Import CSV</button>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if import_report %}
+  <div class="card-head" style="background: var(--bg-inset);">
+    <h2>Import Report - {{ import_report.title }}</h2><span class="spacer"></span>
+    <form method="post" action="/employees/" id="clear-report-form"></form>
+    <span class="head-sub">{{ import_report.rows|length }} row(s)</span>
+  </div>
+  <div class="card-body flush table-wrap">
+    <table class="ams import-report">
+      <thead><tr><th>#</th><th>Result</th><th>Reason</th></tr></thead>
+      <tbody>
+        {% for r in import_report.rows %}
+          <tr><td>{{ r.no }}</td><td class="result-{{ r.result|default:'ok' }}">{{ r.result|default:"ok" }}</td><td>{{ r.reason|default:"-" }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="card-body flush table-wrap">
+    <table class="ams">
+      <thead>
+        <tr>
+          <th>AMS ID</th><th>Employee ID</th><th>Full Name</th><th>Department</th><th>Designation</th>
+          <th>Site</th><th>Reports To</th><th>Status</th><th class="no-print right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in emps %}
+        <tr>
+          <td class="mono">{{ e.ams_id }}</td>
+          <td class="mono">{{ e.display_emp_id }}</td>
+          <td><strong>{{ e.name }}</strong></td>
+          <td>{{ e.department.name|default:"-" }}</td>
+          <td>{{ e.designation|default:"-" }}</td>
+          <td>{{ e.site.name|default:"-" }}</td>
+          <td>{{ e.manager.name|default:"-" }}</td>
+          <td>{{ e.status|asset_badge }}</td>
+          <td class="actions-cell no-print">
+            <a class="btn sm ghost" href="/employees/{{ e.pk }}/view/">View</a>
+            {% if can_write %}
+              <button class="btn sm ghost" data-open-modal="m-emp"
+                data-edit='{{ e.pk }}|{{ e.name }}|{{ e.emp_id }}|{{ e.department.pk|default:"" }}|{{ e.designation }}|{{ e.site.pk|default:"" }}|{{ e.manager.pk|default:"" }}|{{ e.contact }}|{{ e.email }}'>Edit</button>
+              {% if e.status == "Active" %}
+                <button class="btn sm ghost" data-open-modal="m-exit" data-emp="{{ e.pk }}" data-emp-name="{{ e.name }}">Exit</button>
+                <a class="btn sm ghost" href="#" data-open-modal="m-scope" data-scope-target="/employees/{{ e.pk }}/issue-form/">Assign Report</a>
+              {% else %}
+                <button class="btn sm ghost" data-open-modal="m-react" data-emp="{{ e.pk }}">Reactivate</button>
+                <a class="btn sm ghost" href="/employees/{{ e.pk }}/handover-form/">Exit Report</a>
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9"><div class="empty-state">No employees yet. Use "Add Employee" - Departments and Sites can be quick-added in the form.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if can_write %}
+<!-- Add / Edit Employee -->
+<dialog class="modal" id="m-emp">
+  <form method="post" action="/employees/save/">
+    {% csrf_token %}
+    <div class="modal-head"><h3 id="emp-modal-title">Add Employee</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <input type="hidden" name="pk" id="emp-pk">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Full Name <span class="req">*</span></span>
+          <input class="input" name="name" id="emp-name" required></label>
+        <label class="field"><span class="lbl">Employee ID</span>
+          <input class="input" name="emp_id" id="emp-empid" placeholder="e.g. 00609, D00001 (auto if blank)"></label>
+        <label class="field"><span class="lbl">Department <span class="req">*</span></span>
+          <select class="input" name="department" id="emp-dept">
+            <option value="">- Select Department -</option>
+            {% for d in departments %}<option value="{{ d.pk }}">{{ d.name }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Quick-add Department</span>
+          <span class="flex" style="gap:6px;">
+            <input class="input" name="department_name" placeholder="Name" style="flex:1;">
+            <input class="input" name="department_short" placeholder="IT" maxlength="4" style="width:74px; text-transform:uppercase;">
+          </span></label>
+        <label class="field"><span class="lbl">Designation <span class="req">*</span></span>
+          <input class="input" name="designation" id="emp-desig" list="desig-list">
+          <datalist id="desig-list"></datalist></label>
+        <label class="field"><span class="lbl">Site</span>
+          <select class="input" name="site" id="emp-site">
+            <option value="">(None)</option>
+            {% for s in sites %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Reports To (Manager)</span>
+          <select class="input" name="manager" id="emp-manager">
+            <option value="">(None - top level)</option>
+            {% for e in emps %}{% if e.status == 'Active' %}<option value="{{ e.pk }}">{{ e.name }} ({{ e.display_emp_id }})</option>{% endif %}{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Personal Contact Number</span>
+          <input class="input" name="contact" id="emp-contact"></label>
+        <label class="field full"><span class="lbl">Email ID</span>
+          <input class="input" type="email" name="email" id="emp-email"></label>
+      </div>
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Quick-add Site</span>
+          <span class="flex" style="gap:6px;">
+            <input class="input" name="site_name" placeholder="Site name" style="flex:1;">
+            <input class="input" name="site_short" placeholder="HO" maxlength="4" style="width:74px; text-transform:uppercase;">
+          </span></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Save Employee</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Exit -->
+<dialog class="modal wide" id="m-exit">
+  <form method="post" action="">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Exit - <span id="exit-emp-name"></span></h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Exit Date <span class="req">*</span></span>
+          <input class="input" type="date" name="exit_date" value="{% now 'Y-m-d' %}"></label>
+        <label class="field"><span class="lbl">Exit Reason <span class="req">*</span></span>
+          <select class="input" name="exit_reason" required>
+            {% for r in exit_reasons %}<option>{{ r }}</option>{% endfor %}
+          </select></label>
+        <label class="field full"><span class="lbl">Facility Checklist (tick what is revoked, or N/A)</span>
+          <div class="checks">
+            {% for key, label in facilities %}
+              <label><input type="checkbox" name="facility_revoke" value="{{ key }}"> {{ label }}</label>
+              <label><input type="checkbox" name="facility_na" value="{{ key }}"> {{ label }} - N/A</label>
+            {% endfor %}
+          </div></label>
+        <label class="field full"><span class="lbl">New Incharge / HOD (subordinates and their team items move here)</span>
+          <select class="input" name="exit_incharge">
+            <option value="">- Select -</option>
+            {% for e in emps %}{% if e.status == 'Active' %}<option value="{{ e.pk }}">{{ e.name }} ({{ e.display_emp_id }})</option>{% endif %}{% endfor %}
+          </select></label>
+        <label class="field full"><span class="lbl">Exit Remarks</span>
+          <textarea class="input" name="exit_remarks"></textarea></label>
+      </div>
+      <p class="small muted">All assets, mobiles and SIM cards directly held by this employee are returned to store automatically and snapshotted into the Exit Record (used by the Asset Handover Form).</p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn danger" type="submit">Confirm Exit</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Reactivate -->
+<dialog class="modal" id="m-react">
+  <form method="post" action="">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Reactivate Employee</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <label class="field"><span class="lbl">Reactivation Remarks</span>
+        <textarea class="input" name="reactivation_remarks"></textarea></label>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Reactivate</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Print scope -->
+<dialog class="modal" id="m-scope">
+  <div class="modal-head"><h3>Asset Issue Form - Scope</h3>
+    <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+  <form method="get" action="" id="scope-form">
+    <div class="modal-body">
+      <div class="checks" style="grid-template-columns: 1fr;">
+        <label><input type="radio" name="scope" value="direct" checked> Direct (personal holdings only)</label>
+        <label><input type="radio" name="scope" value="team"> Team / Subordinates only</label>
+        <label><input type="radio" name="scope" value="both"> Both (Direct + Team)</label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Open Print View</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- CSV import -->
+<dialog class="modal" id="m-import">
+  <form method="post" action="/employees/csv/import/" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Import Employees (CSV)</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <p class="small muted">Headers: empId*, name*, dept*, designation*, site, reportsTo, managerId, contact, email, status. Missing departments/designations are auto-created; the manager is matched by ID or full name.</p>
+      <input class="input" type="file" name="file" accept=".csv,text/csv" required>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Import</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
+
+<script>
+(function () {
+  // designations datalist
+  var dl = document.getElementById("desig-list");
+  if (dl) {
+    var desigs = [{% for d in desigs %}"{{ d|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    desigs.forEach(function (d) {
+      var o = document.createElement("option"); o.value = d; dl.appendChild(o);
+    });
+  }
+  // wire modal openers with edit data
+  document.addEventListener("click", function (e) {
+    var opener = e.target.closest("[data-open-modal]");
+    if (!opener) return;
+    var modalId = opener.getAttribute("data-open-modal");
+    // scope modal -> target form action
+    if (modalId === "m-scope") {
+      document.getElementById("scope-form").action = opener.getAttribute("data-scope-target");
+      return;
+    }
+    if (modalId === "m-exit") {
+      document.querySelector("#m-exit form").action = "/employees/" + opener.getAttribute("data-emp") + "/exit/";
+      document.getElementById("exit-emp-name").textContent = opener.getAttribute("data-emp-name");
+      return;
+    }
+    if (modalId === "m-react") {
+      document.querySelector("#m-react form").action = "/employees/" + opener.getAttribute("data-emp") + "/reactivate/";
+      return;
+    }
+    if (modalId === "m-emp") {
+      var edit = opener.getAttribute("data-edit");
+      var set = function (id, v) { var el = document.getElementById(id); if (el) el.value = v || ""; };
+      if (edit) {
+        var p = edit.split("|");
+        document.getElementById("emp-modal-title").textContent = "Edit Employee - " + p[1];
+        set("emp-pk", p[0]); set("emp-name", p[1]); set("emp-empid", p[2]);
+        set("emp-dept", p[3]); set("emp-desig", p[4]); set("emp-site", p[5]);
+        set("emp-manager", p[6]); set("emp-contact", p[7]); set("emp-email", p[8]);
+      } else {
+        document.getElementById("emp-modal-title").textContent = "Add Employee";
+        ["emp-pk","emp-name","emp-empid","emp-dept","emp-desig","emp-site","emp-manager","emp-contact","emp-email"].forEach(function (id) { set(id, ""); });
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}

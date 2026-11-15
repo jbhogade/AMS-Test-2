@@ -1,0 +1,25 @@
+{% load ams_extras %}
+<table class="ams">
+  <thead>
+    <tr>
+      <th>Date</th><th>Item</th><th>Site</th><th>Type</th><th class="num">Qty</th><th>{% if kind == 'sparepart' %}Vendor / Used By{% else %}Vendor / Used By{% endif %}</th>
+      {% if kind == 'sparepart' %}<th>Used For Asset</th>{% endif %}<th>Remarks</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in moves %}
+      <tr>
+        <td>{{ m.date|dmy }}</td>
+        <td>{{ m.name }}</td>
+        <td>{{ m.site|default:"-" }}</td>
+        <td>{{ m.type|asset_badge }}</td>
+        <td class="num">{{ m.qty }}</td>
+        <td>{{ m.by|default:"-" }}</td>
+        {% if kind == 'sparepart' %}<td class="mono small">{{ m.asset_id_snapshot|default:"-" }}</td>{% endif %}
+        <td>{{ m.remarks|default:"-" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="8"><div class="empty-state">No movements recorded yet.</div></td></tr>
+    {% endfor %}
+  </tbody>
+</table>

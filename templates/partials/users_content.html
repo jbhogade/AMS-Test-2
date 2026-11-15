@@ -1,0 +1,125 @@
+{% load ams_extras %}
+{% load static %}
+<div id="users-panel">
+  <div class="card" style="margin-bottom:0; {% if hub %}box-shadow:none;{% endif %}">
+    <div class="card-head"><h2>User Accounts</h2><span class="spacer"></span>
+      <span class="head-sub">Site and a password are required for new accounts so they can log in.</span>
+      {% if can_write %}<button class="btn primary" data-open-modal="m-user">&#43; Add User</button>{% endif %}
+    </div>
+    <div class="card-body" style="padding: 10px 16px 0;">
+      <div class="viewing-bar" style="margin-bottom:10px;">{{ hint }}</div>
+    </div>
+    <div class="card-body flush table-wrap">
+      <table class="ams">
+        <thead><tr><th>Username</th><th>Display Name</th><th>Role</th><th>Site</th><th>Linked Employee</th><th>Email</th><th>Active</th><th class="no-print right">Actions</th></tr></thead>
+        <tbody>
+          {% for p in profiles %}
+          <tr>
+            <td class="mono"><strong>{{ p.user.username }}</strong></td>
+            <td>{{ p.display_name|default:"-" }}</td>
+            <td>{{ p.role|role_badge }}</td>
+            <td>{{ p.site.name|default:"-" }}</td>
+            <td>{{ p.linked_employee.name|default:"-" }}</td>
+            <td>{{ p.email|default:"-" }}</td>
+            <td>{% if p.user.is_active %}{{ "Active"|asset_badge }}{% else %}{{ "Inactive"|asset_badge }}{% endif %}</td>
+            <td class="actions-cell no-print">
+              {% if can_write %}
+                <button class="btn sm ghost" data-open-modal="m-user"
+                  data-edit="{{ p.pk }}|{{ p.user.username }}|{{ p.display_name }}|{{ p.role }}|{{ p.site.pk|default:'' }}|{{ p.linked_employee.pk|default:'' }}|{{ p.email }}|{{ p.remarks }}|{{ p.user.is_active }}">Edit</button>
+                <form method="post" action="/users/{{ p.pk }}/toggle/" style="display:inline;">
+                  {% csrf_token %}<button class="btn sm ghost" type="submit">{% if p.user.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+                </form>
+                <form method="post" action="/users/{{ p.pk }}/delete/" style="display:inline;" data-confirm="Delete account '{{ p.user.username }}'?">
+                  {% csrf_token %}<button class="btn sm danger" type="submit">Delete</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8"><div class="empty-state">No accounts visible to your role.</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if can_write %}
+<dialog class="modal wide" id="m-user">
+  <form method="post" action="/users/save/">
+    {% csrf_token %}
+    <div class="modal-head"><h3 id="user-modal-title">Add User</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Username <span class="req">*</span></span>
+          <input class="input mono" name="username" id="u-username" required></label>
+        <label class="field"><span class="lbl">Password <span class="req">*</span> <span class="small muted" id="u-pw-hint">(required)</span></span>
+          <span class="pw-input"><input class="input" type="password" name="password" id="u-password">
+          <span class="toggle pw-toggle">Show</span></span></label>
+        <label class="field"><span class="lbl">Display Name</span>
+          <input class="input" name="display_name" id="u-display"></label>
+        <label class="field"><span class="lbl">Role <span class="req">*</span></span>
+          <select class="input" name="role" id="u-role" required>
+            {% for r in allowed_roles %}<option>{{ r }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Site <span class="req">*</span></span>
+          <select class="input" name="site" id="u-site" required>
+            <option value="">- Select Site -</option>
+            {% for s in sites %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Linked Employee</span>
+          <select class="input" name="linked_employee" id="u-emp">
+            <option value="">None (service/admin account)</option>
+            {% for e in employees %}<option value="{{ e.0 }}">{{ e.1 }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Email</span>
+          <input class="input" type="email" name="email" id="u-email"></label>
+        <label class="field full"><span class="lbl">Remarks</span>
+          <textarea class="input" name="remarks" id="u-remarks"></textarea></label>
+        <label class="field full"><span class="lbl" style="display:flex; gap:8px; align-items:center;">
+          <input type="checkbox" name="active" value="1" id="u-active" checked> Active (can sign in)</span></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Save User</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+document.addEventListener("click", function (e) {
+  var opener = e.target.closest("[data-open-modal]");
+  if (!opener || opener.getAttribute("data-open-modal") !== "m-user") return;
+  var edit = opener.getAttribute("data-edit");
+  var f = document.querySelector("#m-user form");
+  if (edit) {
+    var p = edit.split("|");
+    document.getElementById("user-modal-title").textContent = "Edit User - " + p[1];
+    if (!f.querySelector("[name=pk]")) { var h = document.createElement("input"); h.type = "hidden"; h.name = "pk"; f.appendChild(h); }
+    f.querySelector("[name=pk]").value = p[0];
+    f.querySelector("[name=username]").value = p[1];
+    f.querySelector("[name=username]").readOnly = true;
+    f.querySelector("[name=display_name]").value = p[2];
+    f.querySelector("[name=role]").value = p[3];
+    f.querySelector("[name=site]").value = p[4];
+    f.querySelector("[name=linked_employee]").value = p[5];
+    f.querySelector("[name=email]").value = p[6];
+    f.querySelector("[name=remarks]").value = p[7];
+    f.querySelector("[name=password]").value = "";
+    f.querySelector("[name=password]").placeholder = "Leave blank to keep current password";
+    f.querySelector("[name=password]").required = false;
+    document.getElementById("u-pw-hint").textContent = "(leave blank to keep)";
+    f.querySelector("[name=active]").checked = p[8] === "True";
+  } else {
+    document.getElementById("user-modal-title").textContent = "Add User";
+    f.reset();
+    var pk = f.querySelector("[name=pk]"); if (pk) pk.remove();
+    f.querySelector("[name=password]").required = true;
+    f.querySelector("[name=password]").placeholder = "";
+    document.getElementById("u-pw-hint").textContent = "(required)";
+  }
+});
+</script>
+{% endif %}

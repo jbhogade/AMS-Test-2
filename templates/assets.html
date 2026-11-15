@@ -1,0 +1,456 @@
+{% extends "base_shell.html" %}
+{% load ams_extras %}
+{% block title %}{{ title }} - {{ portal_name }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_sub %}{% if is_mobile %}Phones and handhelds, linked to SIM cards.{% else %}Full lifecycle: assign, return, transfer, repair, retire, replace.{% endif %}{% endblock %}
+
+{% block content %}
+<div class="viewing-bar no-print"><span>Signed-in Role:</span> {{ ams_role|role_badge }}</div>
+
+<div class="status-tiles no-print">
+  <div class="status-tile"><div class="v">{{ tiles.total }}</div><div class="l">Total Stock</div></div>
+  <div class="status-tile"><div class="v">{{ tiles.in_stock }}</div><div class="l">In Stock</div></div>
+  <div class="status-tile"><div class="v">{{ tiles.used }}</div><div class="l">Used / In Use</div></div>
+  <div class="status-tile"><div class="v">{{ tiles.out }}</div><div class="l">Retired / Not Working</div></div>
+</div>
+
+<div class="card">
+  <div class="filter-bar">
+    <form method="get" action="{% if is_mobile %}/mobiles/{% else %}/assets/{% endif %}" class="flex" style="gap:9px; flex:1;">
+      <div class="f"><span>Search</span>
+        <input class="input" type="text" name="q" value="{{ q }}" placeholder="Display ID, serial, model, holder...">
+      </div>
+      <div class="f"><span>Status</span>
+        <select class="input" name="status">
+          <option value="">All</option>
+          {% for code, label in statuses %}
+            <option value="{{ code }}" {% if status_f == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="f"><span>Type</span>
+        <select class="input" name="type">
+          <option value="">All</option>
+          {% for t in types %}<option value="{{ t.pk }}" {% if typ_f|add:"0" == t.pk %}selected{% endif %}>{{ t.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="f"><span>Current Site</span>
+        <select class="input" name="site">
+          <option value="">All</option>
+          {% for s in sites %}<option value="{{ s.pk }}" {% if site_f|add:"0" == s.pk %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <button class="btn sm" type="submit">Apply</button>
+      <a class="btn sm ghost" href="{% if is_mobile %}/mobiles/{% else %}/assets/{% endif %}">Clear</a>
+    </form>
+    <div class="btn-row no-print">
+      {% if can_write %}<button class="btn primary" data-open-modal="m-add">&#43; Add</button>{% endif %}
+      <a class="btn sm" href="/{{ kind }}s/csv/template/">CSV Template</a>
+      <a class="btn sm" href="/{{ kind }}s/csv/export/">Export CSV</a>
+      <a class="btn sm" href="/{{ kind }}s/csv/export-xlsx/">Export Excel</a>
+      {% if can_write %}<button class="btn" data-open-modal="m-import">Import CSV</button>{% endif %}
+    </div>
+  </div>
+
+  {% if import_report %}
+  <div class="card-head" style="background: var(--bg-inset);">
+    <h2>Import Report - {{ import_report.title }}</h2><span class="spacer"></span><span class="head-sub">{{ import_report.rows|length }} row(s)</span>
+  </div>
+  <div class="card-body flush table-wrap">
+    <table class="ams import-report">
+      <thead><tr><th>#</th><th>Result</th><th>Reason</th></tr></thead>
+      <tbody>
+        {% for r in import_report.rows %}
+          <tr><td>{{ r.no }}</td><td class="result-{{ r.result }}">{{ r.result }}</td><td>{{ r.reason|default:"-" }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="card-body flush table-wrap">
+    <table class="ams">
+      <thead>
+        <tr>
+          <th>Asset ID</th><th>AMS ID</th><th>Type</th><th>Make / Model</th><th>Name</th>
+          {% if is_mobile %}<th>IMEI 1</th><th>Mobile No</th>{% else %}<th>Serial No</th>{% endif %}
+          <th>Current Site</th><th>Assigned To</th><th>Status</th><th class="num no-print">Value</th><th class="no-print right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in rows %}
+        <tr>
+          <td class="mono"><strong>{{ a.base_display_id }}</strong></td>
+          <td class="mono small">{{ a.ams_asset_id }}</td>
+          <td>{{ a.type.name|default:"-" }}</td>
+          <td>{{ a.make_model|default:"-" }}</td>
+          <td>{{ a.name|default:"-" }}</td>
+          {% if is_mobile %}
+            <td class="mono small">{{ a.imei1|default:"-" }}</td>
+            <td class="mono">{{ a.sim.mobile_number|default:"-" }}</td>
+          {% else %}
+            <td class="mono small">{{ a.serial_number|default:"-" }}</td>
+          {% endif %}
+          <td>{{ a.current_site.name|default:"-" }}</td>
+          <td>
+            {% if a.assigned_to %}
+              {{ a.assigned_to.name }}
+              {% if a.actual_user_label %}<div class="small muted">user: {{ a.actual_user_label }}</div>{% endif %}
+            {% else %}-{% endif %}
+          </td>
+          <td>{{ a.status|asset_badge }}</td>
+          <td class="num no-print">{{ a.purchase_cost|inr }}</td>
+          <td class="actions-cell no-print">
+            <a class="btn sm ghost" href="/items/{{ a.pk }}/view/">View</a>
+            {% if can_write %}
+              {% if not a.assigned_to and a.status == 'In Store' %}
+                <button class="btn sm primary" data-open-modal="m-assign" data-pk="{{ a.pk }}" data-pid="{{ a.base_display_id }}">Assign</button>
+              {% endif %}
+              {% if a.assigned_to and a.status == 'Assigned' %}
+                <button class="btn sm ghost" data-open-modal="m-assign" data-pk="{{ a.pk }}" data-pid="{{ a.base_display_id }}" data-edit="1"
+                  data-emp="{{ a.assigned_to.pk }}" data-sub="{{ a.assigned_to_sub.pk }}" data-subtext="{{ a.assigned_sub_text }}" data-date="{{ a.assigned_date|date:'Y-m-d' }}">Edit Assign</button>
+                <a class="btn sm ghost" href="#" data-open-modal="m-scope" data-scope-target="/items/{{ a.pk }}/issue-form/">Issue Form</a>
+              {% endif %}
+              {% if a.assigned_to %}
+                <button class="btn sm ghost" data-open-modal="m-action-return" data-pk="{{ a.pk }}">Return</button>
+              {% endif %}
+              {% if a.status != 'Retired / Scrapped' and a.status != 'Not Working' %}
+                <button class="btn sm ghost" data-open-modal="m-action-transfer" data-pk="{{ a.pk }}">Transfer</button>
+                <button class="btn sm ghost" data-open-modal="m-action-notworking" data-pk="{{ a.pk }}">Not Working</button>
+                <button class="btn sm ghost" data-open-modal="m-action-retire" data-pk="{{ a.pk }}">Retire</button>
+              {% endif %}
+              {% if a.assigned_to and a.status == 'Assigned' %}
+                <button class="btn sm ghost" data-open-modal="m-replace" data-pk="{{ a.pk }}" data-pid="{{ a.base_display_id }}" data-type="{{ a.type.pk }}">Replace</button>
+              {% endif %}
+              {% if is_mobile and a.assigned_to and a.status == 'Assigned' %}
+                <button class="btn sm ghost" data-open-modal="m-swap" data-pk="{{ a.pk }}" data-pid="{{ a.base_display_id }}">Swap</button>
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="12"><div class="empty-state">No {% if is_mobile %}mobiles{% else %}assets{% endif %} yet. Add the first record to begin.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if can_write %}
+<!-- Add / Edit -->
+<dialog class="modal wide" id="m-add">
+  <form method="post" action="/{{ kind }}s/save/">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Add {{ title }}</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Asset ID (Display) - leave blank to auto-generate</span>
+          <input class="input mono" name="display_id" placeholder="e.g. LT00021 (typed IDs are treated as legacy)"></label>
+        <label class="field"><span class="lbl">Status</span>
+          <select class="input" name="status">
+            <option>In Store</option><option>In Repair</option>
+          </select></label>
+        <label class="field"><span class="lbl">Category <span class="req">*</span></span>
+          <select class="input" name="category" required>
+            <option value="">- Select -</option>
+            {% for c in categories %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Type <span class="req">*</span></span>
+          <select class="input" name="type" required>
+            <option value="">- Select -</option>
+            {% for t in types %}<option value="{{ t.pk }}">{{ t.name }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Make <span class="req">*</span></span>
+          <select class="input" name="make" required>
+            <option value="">- Select -</option>
+            {% for m in makes %}<option value="{{ m.pk }}">{{ m.name }}{% if m.asset_type %} ({{ m.asset_type.name }}){% endif %}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">{{ title }} Name</span>
+          <input class="input" name="name"></label>
+        <label class="field"><span class="lbl">{% if is_mobile %}Model Number{% else %}Model{% endif %}</span>
+          <input class="input" name="{% if is_mobile %}model_number{% else %}model{% endif %}"></label>
+        <label class="field"><span class="lbl">Serial Number</span>
+          <input class="input" name="serial_number"></label>
+        {% if is_mobile %}
+        <label class="field"><span class="lbl">IMEI No 1</span><input class="input" name="imei1"></label>
+        <label class="field"><span class="lbl">IMEI No 2</span><input class="input" name="imei2"></label>
+        <label class="field"><span class="lbl">Battery No</span><input class="input" name="battery_no"></label>
+        <label class="field"><span class="lbl">Charger No</span><input class="input" name="charger_no"></label>
+        {% endif %}
+        <label class="field"><span class="lbl">Purchase Site <span class="req">*</span></span>
+          <select class="input" name="purchase_site" required>
+            <option value="">- Select -</option>
+            {% for s in sites %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Current Site <span class="req">*</span></span>
+          <select class="input" name="current_site" required>
+            <option value="">- Select -</option>
+            {% for s in sites %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Purchase Date <span class="req">*</span></span>
+          <input class="input" type="date" name="purchase_date" required></label>
+        <label class="field"><span class="lbl">Warranty End Date</span>
+          <input class="input" type="date" name="warranty_end"></label>
+        <label class="field"><span class="lbl">Vendor</span>
+          <select class="input" name="vendor">
+            <option value="">(None)</option>
+            {% for v in vendors %}<option value="{{ v.pk }}">{{ v.name }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Purchase Cost (₹)</span>
+          <input class="input" type="number" step="0.01" min="0" name="purchase_cost"></label>
+        <label class="field full"><span class="lbl">Other / Remarks</span>
+          <textarea class="input" name="remarks"></textarea></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Save {{ title }}</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Assign -->
+<dialog class="modal wide" id="m-assign">
+  <form method="post" action="">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Assign - <span class="mono" id="assign-pid"></span></h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Direct Employee <span class="req">*</span></span>
+          <select class="input" name="assign_emp" id="assign-emp" required>
+            <option value="">- Select -</option>
+            {% for e in emps %}<option value="{{ e.pk }}">{{ e.name }} ({{ e.display_emp_id }})</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Subordinate / Actual User</span>
+          <select class="input" name="assign_sub" id="assign-sub">
+            <option value="">None</option>
+            <option value="__other__">Other / Not in User Master...</option>
+            {% for e in emps %}<option value="{{ e.pk }}">{{ e.name }} ({{ e.display_emp_id }})</option>{% endfor %}
+          </select></label>
+        <label class="field" id="sub-text-wrap" style="display:none;"><span class="lbl">Other - Name</span>
+          <input class="input" name="assign_sub_text" placeholder="Type the actual user's name"></label>
+        <label class="field"><span class="lbl">Date of Issue <span class="req">*</span></span>
+          <input class="input" type="date" name="assign_date" value="{% now 'Y-m-d' %}"></label>
+        {% if is_mobile %}
+        <label class="field"><span class="lbl">SIM Card</span>
+          <select class="input" name="assign_sim">
+            <option value="">None</option>
+            <option value="__unlink__">Unlink current SIM</option>
+            {% for s in sims_available %}<option value="{{ s.pk }}">{{ s.mobile_number }} ({{ s.operator.name|default:"no operator" }})</option>{% endfor %}
+          </select></label>
+        {% endif %}
+        <label class="field full"><span class="lbl">Accessories / Items Included</span>
+          <div class="checks">
+            {% for acc in accessories_all %}<label><input type="checkbox" name="assign_accessories" value="{{ acc.pk }}"> {{ acc.name }} ({{ acc.asset_type.name|default:"-" }})</label>{% endfor %}
+          </div></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Save Assignment</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Return / Not Working / Retire (shared date modal pattern) -->
+{% for mid, heading, action, btn in action_modals %}
+<dialog class="modal" id="{{ mid }}">
+  <form method="post" action="">
+    {% csrf_token %}
+    <div class="modal-head"><h3>{{ heading }}</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <label class="field"><span class="lbl">Date <span class="req">*</span></span>
+        <input class="input" type="date" name="action_date" value="{% now 'Y-m-d' %}"></label>
+      <p class="small muted" id="{{ mid }}-hint"></p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn {% if mid == 'm-action-retire' or mid == 'm-action-notworking' %}danger{% else %}primary{% endif %}" type="submit">{{ btn }}</button>
+    </div>
+  </form>
+</dialog>
+{% endfor %}
+
+<!-- Transfer -->
+<dialog class="modal" id="m-action-transfer">
+  <form method="post" action="">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Transfer</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Transfer To Site <span class="req">*</span></span>
+          <select class="input" name="transfer_site" required>
+            <option value="">- Select -</option>
+            {% for s in sites %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Date <span class="req">*</span></span>
+          <input class="input" type="date" name="transfer_date" value="{% now 'Y-m-d' %}"></label>
+        <label class="field full"><span class="lbl">Status</span>
+          <select class="input" name="transfer_status">
+            <option>Transfer</option><option>In Store</option><option>Assigned</option>
+          </select></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Transfer</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Replace -->
+<dialog class="modal wide" id="m-replace">
+  <form method="post" action="">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Replace - <span class="mono" id="repl-pid"></span></h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Replacement From (In-Store asset) <span class="req">*</span></span>
+          <select class="input" name="repl_source" id="repl-source" required>
+            <option value="">- Select -</option>
+            {% for a in in_store_same_type %}<option value="{{ a.pk }}">{{ a.base_display_id }} - {{ a.make_model }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Replacement Date <span class="req">*</span></span>
+          <input class="input" type="date" name="repl_date" value="{% now 'Y-m-d' %}"></label>
+        <label class="field"><span class="lbl">Reason <span class="req">*</span></span>
+          <select class="input" name="repl_reason" required>
+            {% for r in replace_reasons %}<option>{{ r }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Note</span>
+          <input class="input" name="repl_note"></label>
+        <label class="field full"><span class="lbl">Accessories / Items Included</span>
+          <div class="checks">
+            {% for acc in accessories_all %}<label><input type="checkbox" name="repl_accessories" value="{{ acc.pk }}"> {{ acc.name }}</label>{% endfor %}
+          </div></label>
+      </div>
+      <p class="small muted">The replacement inherits the holder and accessories. The old record becomes "Replaced" and keeps a permanent link to its replacement.</p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Replace Asset</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Swap (mobiles) -->
+<dialog class="modal" id="m-swap">
+  <form method="post" action="/items/0/swap/">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Swap - <span class="mono" id="swap-pid"></span></h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Swap Type</span>
+          <select class="input" name="swap_type"><option>Phone swap</option><option>Temporary exchange</option></select></label>
+        <label class="field"><span class="lbl">Swap With (Assigned mobile) <span class="req">*</span></span>
+          <select class="input" name="swap_target" id="swap-target" required>
+            <option value="">- Select -</option>
+            {% for a in rows %}{% if a.kind == 'mobile' and a.assigned_to %}<option value="{{ a.pk }}">{{ a.base_display_id }} - {{ a.assigned_to.name }}</option>{% endif %}{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Date <span class="req">*</span></span>
+          <input class="input" type="date" name="swap_date" value="{% now 'Y-m-d' %}"></label>
+        <label class="field"><span class="lbl">Note</span><input class="input" name="swap_note"></label>
+        <label class="field full"><span class="lbl">SIM handling</span>
+          <div class="checks" style="grid-template-columns:1fr 1fr;">
+            <label><input type="radio" name="swap_sim_choice" value="move" checked> Move SIM with holder</label>
+            <label><input type="radio" name="swap_sim_choice" value="keep"> Keep SIM in this phone</label>
+          </div></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Swap</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Print scope -->
+<dialog class="modal" id="m-scope">
+  <div class="modal-head"><h3>Asset Issue Form - Scope</h3>
+    <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+  <form method="get" action="" id="scope-form">
+    <div class="modal-body">
+      <div class="checks" style="grid-template-columns: 1fr;">
+        <label><input type="radio" name="scope" value="direct" checked> Direct (personal holdings only)</label>
+        <label><input type="radio" name="scope" value="team"> Team / Subordinates only</label>
+        <label><input type="radio" name="scope" value="both"> Both (Direct + Team)</label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Open Print View</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Import -->
+<dialog class="modal" id="m-import">
+  <form method="post" action="/{{ kind }}s/csv/import/" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Import {{ title }} (CSV)</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <p class="small muted">Types, categories, makes and sites are validated against the masters. Download the CSV Template for the exact headers. Dates are DD-MM-YYYY.</p>
+      <input class="input" type="file" name="file" accept=".csv,text/csv" required>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Import</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+document.addEventListener("click", function (e) {
+  var opener = e.target.closest("[data-open-modal]");
+  if (!opener) return;
+  var id = opener.getAttribute("data-open-modal");
+  var pk = opener.getAttribute("data-pk");
+  if (pk) {
+    var map = {
+      "m-assign": "/items/" + pk + "/assign/",
+      "m-action-return": "/items/" + pk + "/return/",
+      "m-action-transfer": "/items/" + pk + "/transfer/",
+      "m-action-notworking": "/items/" + pk + "/status/notworking/",
+      "m-action-retire": "/items/" + pk + "/status/retire/",
+      "m-replace": "/items/" + pk + "/replace/",
+      "m-swap": "/items/" + pk + "/swap/"
+    };
+    var form = document.querySelector("#" + id + " form");
+    if (form && map[id]) form.action = map[id];
+  }
+  if (id === "m-assign") {
+    document.getElementById("assign-pid").textContent = opener.getAttribute("data-pid") || "";
+    if (opener.getAttribute("data-edit")) {
+      document.querySelector("#m-assign select[name=assign_emp]").value = opener.getAttribute("data-emp") || "";
+      document.querySelector("#m-assign select[name=assign_sub]").value = opener.getAttribute("data-sub") || "";
+      document.querySelector("#m-assign input[name=assign_sub_text]").value = opener.getAttribute("data-subtext") || "";
+      document.querySelector("#m-assign input[name=assign_date]").value = opener.getAttribute("data-date") || "";
+    }
+  }
+  if (id === "m-replace") {
+    document.getElementById("repl-pid").textContent = opener.getAttribute("data-pid") || "";
+    // filter source options by type
+    var type = opener.getAttribute("data-type");
+    var sel = document.getElementById("repl-source");
+    sel.querySelectorAll("option").forEach(function (o) {
+      if (o.value) o.style.display = (o.getAttribute("data-type") === type || !o.getAttribute("data-type")) ? "" : "none";
+    });
+  }
+  if (id === "m-swap") document.getElementById("swap-pid").textContent = opener.getAttribute("data-pid") || "";
+  if (id === "m-scope") document.getElementById("scope-form").action = opener.getAttribute("data-scope-target");
+});
+// toggle free-text subordinate input
+document.addEventListener("change", function (e) {
+  if (e.target.name === "assign_sub") {
+    document.getElementById("sub-text-wrap").style.display = e.target.value === "__other__" ? "" : "none";
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

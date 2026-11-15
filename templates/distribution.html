@@ -1,0 +1,72 @@
+{% extends "base_shell.html" %}
+{% load ams_extras %}
+{% block title %}Asset Distribution{% endblock %}
+{% block page_title %}Asset Distribution{% endblock %}
+{% block page_sub %}Per-employee asset holdings - direct (personal) vs team / subordinate use.{% endblock %}
+
+{% block content %}
+<div class="viewing-bar no-print"><span>Signed-in Role:</span> {{ ams_role|role_badge }}</div>
+
+<div class="status-tiles no-print">
+  <div class="status-tile"><div class="v">{{ kpi_direct }}</div><div class="l">Direct (Personal) Assets</div></div>
+  <div class="status-tile"><div class="v">{{ kpi_team }}</div><div class="l">Team / Subordinate Assets</div></div>
+  <div class="status-tile"><div class="v">{{ kpi_total }}</div><div class="l">Total Distributed</div></div>
+  <div class="status-tile"><div class="v">{{ kpi_holding }}</div><div class="l">Employees Holding Assets</div></div>
+</div>
+
+<div class="card">
+  <div class="filter-bar">
+    <form method="get" action="/distribution/" class="flex" style="gap:9px; flex:1;">
+      <div class="f"><span>Search</span><input class="input" type="text" name="q" value="{{ q }}" placeholder="Employee name, ID, department..."></div>
+      <label class="f" style="flex-direction:row; align-items:center; gap:6px; font-size:.78rem;">
+        <input type="checkbox" name="holding" value="1" {% if only %}checked{% endif %} onchange="this.form.submit()"> Only employees with assets
+      </label>
+      <button class="btn sm" type="submit">Apply</button>
+      <a class="btn sm ghost" href="/distribution/">Clear filters</a>
+    </form>
+    <div class="btn-row no-print">
+      <a class="btn sm" href="/distribution/export/csv/">Export CSV</a>
+      <a class="btn sm" href="/distribution/export/xlsx/">Export Excel</a>
+    </div>
+  </div>
+  <div class="card-body flush table-wrap">
+    <table class="ams">
+      <thead><tr><th>Emp ID</th><th>Employee Name</th><th>Department</th><th>Designation</th>
+        <th>Direct</th><th>Team</th><th>Total</th><th class="no-print right">Actions</th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="mono">{{ r.emp.display_emp_id }}</td>
+          <td><strong>{{ r.emp.name }}</strong></td>
+          <td>{{ r.emp.department.name|default:"-" }}</td>
+          <td>{{ r.emp.designation|default:"-" }}</td>
+          <td class="num">{{ r.direct }}</td>
+          <td class="num">{{ r.team }}</td>
+          <td class="num"><strong>{{ r.total }}</strong></td>
+          <td class="actions-cell no-print">
+            <button class="btn sm ghost" hx-get="/distribution/{{ r.emp.pk }}/detail/" hx-target="#dist-detail-body" data-open-modal="m-dist">View Assets</button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8"><div class="empty-state">No employees match the current filters.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<dialog class="modal wide" id="m-dist">
+  <div class="modal-head"><h3>Asset Detail</h3>
+    <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+  <div class="modal-body" id="dist-detail-body"><span class="spinner"></span></div>
+  <div class="modal-foot">
+    <button type="button" class="btn" data-close-modal>Close</button>
+  </div>
+</dialog>
+
+<script>
+document.body.addEventListener("htmx:afterSwap", function (e) {
+  if (e.detail.target.id === "dist-detail-body") openModal("m-dist");
+});
+</script>
+{% endblock %}

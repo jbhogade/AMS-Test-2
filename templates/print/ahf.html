@@ -1,0 +1,156 @@
+{% extends "print/base_print.html" %}
+{% load ams_extras %}
+{% block print_body %}
+<div class="pf-doc landscape">
+  {% if prefs.style == 'banner' and company.banner %}
+    <div class="pf-header pf-header-banner">
+      <div style="width:100%;">
+        <div class="pf-banner-wrap"><img class="pf-banner" src="{{ company.banner.url }}" alt="banner"></div>
+        <div class="pf-header-row" style="display:flex; align-items:flex-end;">
+          <div class="pf-banner-caption" style="flex:1;">
+            {% if prefs.show_name %}<div class="pf-company">{{ company.name }}</div>{% endif %}
+            {% if prefs.show_slogan and company.slogan %}<div class="pf-company-tag">{{ company.slogan }}</div>{% endif %}
+          </div>
+          <div class="pf-formmeta">
+            <div class="pf-form-title pf-title-handover">ASSET HANDOVER FORM</div>
+            <div><strong>Form No:</strong> {{ form_no }}</div>
+            <div><strong>Date Generated:</strong> {{ today }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="pf-header">
+      {% if prefs.show_logo and company.logo %}<img class="pf-logo" src="{{ company.logo.url }}" alt="logo">{% endif %}
+      <div class="pf-company-block">
+        {% if prefs.show_name %}<div class="pf-company">{{ company.name }}</div>{% endif %}
+        {% if prefs.show_slogan and company.slogan %}<div class="pf-company-tag">{{ company.slogan }}</div>{% endif %}
+      </div>
+      <div class="pf-formmeta">
+        <div class="pf-form-title pf-title-handover">ASSET HANDOVER FORM</div>
+        <div><strong>Form No:</strong> {{ form_no }}</div>
+        <div><strong>Date Generated:</strong> {{ today }}</div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="pf-section-bar">Employee Details (Exiting)</div>
+  <div class="pf-box-grid cols-2">
+    <div class="pf-box"><div class="pf-box-label">Employee ID</div><div class="pf-box-value mono">{{ er.emp_id }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Full Name</div><div class="pf-box-value">{{ er.emp_name }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Department</div><div class="pf-box-value">{{ er.emp_dept }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Designation</div><div class="pf-box-value">{{ er.emp_designation }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">New Incharge / HOD</div>
+      <div class="pf-box-value">{% if er.team_transferred_to %}{{ er.team_transferred_to.name }} ({{ er.team_transferred_to.empId }}){% else %}N/A - No team transferred{% endif %}</div></div>
+    <div class="pf-box pf-box-wide"><div class="pf-box-label">Exit Reason</div>
+      <div class="pf-box-value">{{ er.exit_reason }}{% if er.exit_remarks %} - {{ er.exit_remarks }}{% endif %}</div>
+      <div class="pf-box-line"></div></div>
+  </div>
+  <div class="pf-box-grid cols-3" style="margin-top:7px;">
+    <div class="pf-box"><div class="pf-box-label">Date of Exit</div><div class="pf-box-value">{{ er.exit_date|dmy }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Form Generated</div><div class="pf-box-value">{{ today }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Assets Returned</div><div class="pf-box-value">{{ er.direct_assets|length }}</div></div>
+  </div>
+
+  <div class="pf-section-bar accent">Assets Returned (Direct Assignment Only)</div>
+  <table class="pf-asset-table">
+    <thead><tr><th style="width:26px;">#</th><th>Asset ID</th><th>Asset Name / Type</th><th>Site</th><th>Condition at Return</th></tr></thead>
+    <tbody>
+      {% for a in er.direct_assets %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td class="mono">{{ a.assetId }}</td>
+        <td class="pf-wrap">{{ a.type }} ({{ a.makeModel }})</td>
+        <td>{{ a.site }}</td>
+        <td><span class="pf-check-inline"><span>Good</span><span>Needs Repair / Service</span><span>Damaged</span></span></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5">No assets were held at exit</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if er.direct_mobiles %}
+  <div class="pf-section-bar">Mobiles Returned</div>
+  <table class="pf-asset-table">
+    <thead><tr><th style="width:26px;">#</th><th>Mobile ID</th><th>Type / Make / Model</th><th>IMEI No 1</th><th>Mobile No</th><th>Site</th><th>Condition at Return</th></tr></thead>
+    <tbody>
+      {% for m in er.direct_mobiles %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td class="mono">{{ m.assetId }}</td>
+        <td class="pf-wrap">{{ m.type }} ({{ m.makeModel }})</td>
+        <td class="mono">{{ m.imei1|default:"-" }}</td>
+        <td class="mono">{{ m.simMobileNo|default:"-" }}</td>
+        <td>{{ m.site }}</td>
+        <td><span class="pf-check-inline"><span>Good</span><span>Needs Repair / Service</span><span>Damaged</span></span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if er.direct_sims %}
+  <div class="pf-section-bar">SIM Cards Returned</div>
+  <table class="pf-asset-table">
+    <thead><tr><th style="width:26px;">#</th><th>SIM ID</th><th>Mobile Number</th><th>Operator</th><th>Plan</th><th>Status at Return</th></tr></thead>
+    <tbody>
+      {% for s in er.direct_sims %}
+      <tr><td>{{ forloop.counter }}</td><td class="mono">{{ s.simId }}</td><td class="mono">{{ s.mobileNumber }}</td>
+        <td>{{ s.operator }}</td><td>{{ s.plan }}</td><td>{{ s.status }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if er.subordinate_assets %}
+  <div class="pf-section-bar accent">Subordinate / Team Assets Transferred</div>
+  <div class="pf-notes-box">
+    <div><strong>New Incharge / HOD:</strong> {% if er.team_transferred_to %}{{ er.team_transferred_to.name }} ({{ er.team_transferred_to.empId }}){% else %}N/A{% endif %}</div>
+    {% for it in er.subordinate_assets %}
+      <div>{{ it.subName }} ({{ it.subEmpId }}) - {{ it.assetId }}: {{ it.type }}{% if it.makeModel %} ({{ it.makeModel }}){% endif %} &middot; {{ it.site }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="pf-section-bar accent">Clearance Checklist</div>
+  <div class="pf-checklist-grid">
+    <div>&#9744; All listed assets physically returned</div>
+    <div>&#9744; Asset condition verified by IT/Admin</div>
+    {% for f in er.facilities_disabled %}<div>&#9744; {{ f }} revoked</div>{% endfor %}
+    {% for f in er.facilities_na %}<div>&#9744; {{ f }} - N/A</div>{% endfor %}
+    <div>&#9744; Subordinate assets flagged for reassignment (if applicable)</div>
+  </div>
+
+  <div class="pf-section-bar">Remarks / Notes</div>
+  <div class="pf-notes-box">
+    {% for a in er.direct_assets %}{% if a.remarks %}<div><strong>{{ a.assetId }} - Remarks (on record):</strong> {{ a.remarks }}</div>{% endif %}{% endfor %}
+    {% if not er.direct_assets %}<div class="pf-notes-empty">No remarks recorded against the asset(s) in the system.</div>{% endif %}
+  </div>
+
+  <div class="pf-section-bar accent">Additional Remarks/Notes (IT/HR/Admin)</div>
+  <div class="pf-additional-box">
+    <div class="pf-notes-empty">(Blank - to be filled in writing by IT / HR / Admin, if applicable)</div>
+    <div class="pf-additional-sign">
+      <span>Name &amp; Signature (IT / HR / Admin): _______________________________</span>
+      <span>Date: ________________</span>
+    </div>
+  </div>
+
+  {% if terms %}
+  <div class="pf-section-bar">Declaration</div>
+  <ol class="pf-declaration">{% for t in terms %}<li>{{ t.text }}</li>{% endfor %}</ol>
+  {% endif %}
+
+  <div class="pf-sign-grid">
+    <div class="pf-sign-box"><div class="pf-sign-line"></div><div class="pf-sign-label">Employee<br>Signature &amp; Date</div></div>
+    <div class="pf-sign-box"><div class="pf-sign-line"></div><div class="pf-sign-label">Received By (IT / Admin)<br>Signature &amp; Date</div></div>
+    <div class="pf-sign-box"><div class="pf-sign-line"></div><div class="pf-sign-label">Authorised By<br>Signature &amp; Date</div></div>
+  </div>
+
+  <div class="pf-footer">
+    <span>AMS-Test-2 &middot; Generated electronically</span>
+    <span>Internal Ref: {{ form_no }} &middot; {{ er.direct_assets|length }} asset(s) returned</span>
+  </div>
+</div>
+{% endblock %}

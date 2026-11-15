@@ -1,0 +1,87 @@
+{% extends "base_shell.html" %}
+{% load ams_extras %}
+{% block title %}{{ emp.name }} - Employee Master{% endblock %}
+{% block page_title %}{{ emp.name }}{% endblock %}
+{% block page_sub %}AMS ID {{ emp.ams_id }} &middot; {{ emp.department.name|default:"-" }} &middot; {{ emp.designation|default:"-" }}{% endblock %}
+
+{% block content %}
+<div class="viewing-bar no-print"><span>Signed-in Role:</span> {{ ams_role|role_badge }}</div>
+
+<div class="card">
+  <div class="card-head"><h2>Profile</h2><span class="spacer"></span>{{ emp.status|asset_badge }}</div>
+  <div class="card-body">
+    <div class="detail-grid">
+      <div class="detail-cell"><div class="l">Employee ID</div><div class="v mono">{{ emp.display_emp_id }}</div></div>
+      <div class="detail-cell"><div class="l">AMS ID</div><div class="v mono">{{ emp.ams_id }}</div></div>
+      <div class="detail-cell"><div class="l">Department</div><div class="v">{{ emp.department.name|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">Designation</div><div class="v">{{ emp.designation|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">Site</div><div class="v">{{ emp.site.name|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">Reports To</div><div class="v">{{ emp.manager.name|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">Contact</div><div class="v">{{ emp.contact|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">Email</div><div class="v">{{ emp.email|default:"-" }}</div></div>
+      {% if emp.exit_date %}<div class="detail-cell"><div class="l">Exit Date</div><div class="v">{{ emp.exit_date|dmy }}</div></div>
+      <div class="detail-cell"><div class="l">Exit Reason</div><div class="v">{{ emp.exit_reason|default:"-" }}</div></div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>Direct Holdings</h2><span class="spacer"></span>
+    <span class="head-sub">{{ assets|length }} asset(s) &middot; {{ mobiles|length }} mobile(s) &middot; {{ sims|length }} SIM(s)</span></div>
+  <div class="card-body flush table-wrap">
+    <table class="ams">
+      <thead><tr><th>ID</th><th>Kind</th><th>Type</th><th>Make / Model</th><th>Serial / Number</th><th>Site</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for a in assets %}
+          <tr><td class="mono"><a href="/items/{{ a.pk }}/view/">{{ a.base_display_id }}</a></td><td>Asset</td><td>{{ a.type.name|default:"-" }}</td><td>{{ a.make_model|default:"-" }}</td><td class="mono">{{ a.serial_number|default:"-" }}</td><td>{{ a.current_site.name|default:"-" }}</td><td>{{ a.status|asset_badge }}</td></tr>
+        {% endfor %}
+        {% for m in mobiles %}
+          <tr><td class="mono"><a href="/items/{{ m.pk }}/view/">{{ m.base_display_id }}</a></td><td>Mobile</td><td>{{ m.type.name|default:"-" }}</td><td>{{ m.make_model|default:"-" }}</td><td class="mono">{{ m.sim.mobile_number|default:"-" }}</td><td>{{ m.current_site.name|default:"-" }}</td><td>{{ m.status|asset_badge }}</td></tr>
+        {% endfor %}
+        {% for s in sims %}
+          <tr><td class="mono">{{ s.sim_id }}</td><td>SIM Card</td><td>{{ s.operator.name|default:"-" }}</td><td>{{ s.plan.name|default:"-" }}</td><td class="mono">{{ s.mobile_number }}</td><td>{{ s.site.name|default:"-" }}</td><td>{{ s.status|asset_badge }}</td></tr>
+        {% endfor %}
+        {% if not assets and not mobiles and not sims %}
+          <tr><td colspan="7"><div class="empty-state">No holdings.</div></td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if subordinates %}
+<div class="card">
+  <div class="card-head"><h2>Direct Subordinates</h2></div>
+  <div class="card-body flush table-wrap">
+    <table class="ams">
+      <thead><tr><th>AMS ID</th><th>Name</th><th>Department</th><th>Designation</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for s in subordinates %}
+          <tr><td class="mono">{{ s.ams_id }}</td><td><a href="/employees/{{ s.pk }}/view/">{{ s.name }}</a></td><td>{{ s.department.name|default:"-" }}</td><td>{{ s.designation|default:"-" }}</td><td>{{ s.status|asset_badge }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if exit_record %}
+<div class="card">
+  <div class="card-head"><h2>Exit Record - {{ exit_record.exit_id }}</h2><span class="spacer"></span>
+    {% if exit_record.reactivated %}<span class="badge badge-green">Reactivated</span>{% endif %}</div>
+  <div class="card-body">
+    <div class="detail-grid">
+      <div class="detail-cell"><div class="l">Exit Date</div><div class="v">{{ exit_record.exit_date|dmy }}</div></div>
+      <div class="detail-cell"><div class="l">Reason</div><div class="v">{{ exit_record.exit_reason|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">Assets Returned</div><div class="v">{{ exit_record.direct_assets|length }}</div></div>
+      <div class="detail-cell"><div class="l">Mobiles Returned</div><div class="v">{{ exit_record.direct_mobiles|length }}</div></div>
+      <div class="detail-cell"><div class="l">SIMs Returned</div><div class="v">{{ exit_record.direct_sims|length }}</div></div>
+      <div class="detail-cell"><div class="l">Facilities Revoked</div><div class="v">{{ exit_record.facilities_disabled|join:", "|default:"-" }}</div></div>
+    </div>
+    <div class="mt no-print"><a class="btn" href="/employees/{{ emp.pk }}/handover-form/">Open Asset Handover Form (print)</a></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="no-print"><a class="btn ghost" href="/employees/">&larr; Back to Employee Master</a></div>
+{% endblock %}

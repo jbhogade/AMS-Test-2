@@ -1,0 +1,174 @@
+{% load ams_extras %}
+{% if tab == 'assetLifecycle' %}
+  <div class="filter-bar no-print" style="border-bottom:1px solid var(--border); margin:-14px -16px 12px;">
+    <form method="get" action="/reports/" class="flex" style="gap:9px; flex:1;">
+      <input type="hidden" name="tab" value="assetLifecycle">
+      <div class="f"><span>Event Type</span>
+        <select class="input" name="event_type"><option value="">All</option>
+          {% for t in event_types %}<option value="{{ t }}" {% if request.GET.event_type == t %}selected{% endif %}>{{ t|capfirst }}{% if t == 'Fault' %} (Not Working){% endif %}</option>{% endfor %}
+        </select></div>
+      <div class="f"><span>Site</span>
+        <select class="input" name="site"><option value="">All</option>
+          {% for s in sites %}<option value="{{ s.pk }}" {% if request.GET.site|add:'0' == s.pk %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+        </select></div>
+      <div class="f"><span>From</span><input class="input" type="date" name="from" value="{{ request.GET.from }}"></div>
+      <div class="f"><span>To</span><input class="input" type="date" name="to" value="{{ request.GET.to }}"></div>
+      <button class="btn sm" type="submit">Apply</button>
+      <a class="btn sm ghost" href="/reports/?tab=assetLifecycle">Clear filters</a>
+    </form>
+    <div class="btn-row">
+      <a class="btn sm" href="/print/report/assetLifecycle/" target="_blank">Print</a>
+      <a class="btn sm" href="/reports/export/assetLifecycle/csv/">Export CSV</a>
+      <a class="btn sm" href="/reports/export/assetLifecycle/xlsx/">Export Excel</a>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="ams">
+      <thead><tr><th>Date</th><th>Type</th><th>Action</th><th>Asset ID</th><th>Item</th><th>Employee</th><th>Department</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for e in events %}
+        <tr>
+          <td class="mono">{{ e.date|dmy }}</td>
+          <td>{{ e.event_type|asset_badge }}</td>
+          <td>{{ e.action }}</td>
+          <td class="mono">{{ e.item_label }}</td>
+          <td>{{ e.item_kind|capfirst }}</td>
+          <td>{{ e.emp_label|default:"-" }}</td>
+          <td>{{ e.emp_dept|default:"-" }}</td>
+          <td>{{ e.status_label }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8"><div class="empty-state">No events match these filters.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+{% elif tab == 'assetIssue' or tab == 'assetHandover' %}
+  <p class="small muted" style="margin-top:0;">
+    Click an Employee Name or Asset ID to generate and print that employee's
+    {% if exited %}Asset Handover Form (from the exit snapshot){% else %}Asset Issue Form{% endif %}.
+    Date filters go by the asset's last recorded activity.
+  </p>
+  <div class="filter-bar no-print" style="border-bottom:1px solid var(--border); margin:-6px -16px 12px;">
+    <form method="get" action="/reports/" class="flex" style="gap:9px; flex:1;">
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <div class="f"><span>Search</span><input class="input" type="text" name="q" value="{{ request.GET.q }}" placeholder="Employee name, code, asset ID..."></div>
+      <div class="f"><span>Department</span>
+        <select class="input" name="dept"><option value="">All</option>
+          {% for d in departments %}<option value="{{ d.pk }}" {% if request.GET.dept|add:'0' == d.pk %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+        </select></div>
+      <button class="btn sm" type="submit">Apply</button>
+      <a class="btn sm ghost" href="/reports/?tab={{ tab }}">Clear filters</a>
+    </form>
+    <div class="btn-row">
+      <a class="btn sm" href="/reports/export/{{ tab }}/csv/">Export CSV</a>
+      <a class="btn sm" href="/reports/export/{{ tab }}/xlsx/">Export Excel</a>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="ams">
+      <thead><tr><th>Emp Code</th><th>Employee Name</th><th>Status</th><th>Department</th><th>Asset ID</th><th>Asset Type</th><th>Site</th></tr></thead>
+      <tbody>
+        {% for h in holdings %}
+        <tr>
+          <td class="mono">{{ h.emp.display_emp_id }}</td>
+          <td><a href="{% if exited %}/employees/{{ h.emp.pk }}/handover-form/{% else %}/employees/{{ h.emp.pk }}/issue-form/?scope=both{% endif %}" target="_blank"><strong>{{ h.emp.name }}</strong></a></td>
+          <td>{{ h.emp.status|asset_badge }}</td>
+          <td>{{ h.emp.department.name|default:"-" }}</td>
+          <td class="mono"><a href="/items/{{ h.a.pk }}/issue-form/?scope=direct" target="_blank">{{ h.pid }}</a></td>
+          <td>{{ h.a.type.name|default:"-" }}</td>
+          <td>{{ h.a.current_site.name|default:"-" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7"><div class="empty-state">
+          {% if exited %}No exited employees with currently held assets match these filters.{% else %}No active employees with currently held assets match these filters.{% endif %}
+        </div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+{% elif tab == 'consumableRestock' or tab == 'consumableUsed' or tab == 'sparePartsRestock' or tab == 'sparePartsUsed' %}
+  <div class="filter-bar no-print" style="border-bottom:1px solid var(--border); margin:-14px -16px 12px;">
+    <form method="get" action="/reports/" class="flex" style="gap:9px; flex:1;">
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <div class="f"><span>Site</span>
+        <select class="input" name="site"><option value="">All</option>
+          {% for s in sites %}<option value="{{ s.pk }}" {% if request.GET.site|add:'0' == s.pk %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+        </select></div>
+      <div class="f"><span>From</span><input class="input" type="date" name="from" value="{{ request.GET.from }}"></div>
+      <div class="f"><span>To</span><input class="input" type="date" name="to" value="{{ request.GET.to }}"></div>
+      <button class="btn sm" type="submit">Apply</button>
+      <a class="btn sm ghost" href="/reports/?tab={{ tab }}">Clear filters</a>
+    </form>
+    <div class="btn-row">
+      <a class="btn sm" href="/print/report/{{ tab }}/" target="_blank">Print</a>
+      <a class="btn sm" href="/reports/export/{{ tab }}/csv/">Export CSV</a>
+      <a class="btn sm" href="/reports/export/{{ tab }}/xlsx/">Export Excel</a>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="ams">
+      <thead>
+        <tr><th>Date</th><th>Item</th><th>Site</th><th class="num">Qty</th>
+          <th>{% if tab|slice:'-7:' == 'Restock' %}Vendor{% else %}Used By{% endif %}</th>
+          {% if show_asset_col %}<th>Used For Asset</th>{% endif %}
+          <th>Remarks</th></tr>
+      </thead>
+      <tbody>
+        {% for m in moves %}
+        <tr>
+          <td class="mono">{{ m.date|dmy }}</td>
+          <td>{{ m.name }}</td>
+          <td>{{ m.site|default:"-" }}</td>
+          <td class="num">{{ m.qty }}</td>
+          <td>{{ m.by|default:"-" }}</td>
+          {% if show_asset_col %}<td class="mono small">{{ m.asset_id_snapshot|default:"-" }}</td>{% endif %}
+          <td>{{ m.remarks|default:"-" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7"><div class="empty-state">No records match these filters.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+{% elif tab == 'assetDistribution' %}
+  <p class="small muted" style="margin-top:0;">
+    Per-employee asset holdings: Direct = personally held; Team = held by the employee's subordinates,
+    or assigned to the employee with a subordinate/team member as the actual user.
+  </p>
+  <div class="filter-bar no-print" style="border-bottom:1px solid var(--border); margin:-6px -16px 12px;">
+    <form method="get" action="/reports/" class="flex" style="gap:9px; flex:1;">
+      <input type="hidden" name="tab" value="assetDistribution">
+      <div class="f"><span>Search</span><input class="input" type="text" name="q" value="{{ request.GET.q }}" placeholder="Employee name, code, department..."></div>
+      <button class="btn sm" type="submit">Apply</button>
+      <a class="btn sm ghost" href="/reports/?tab=assetDistribution">Clear filters</a>
+    </form>
+    <div class="btn-row">
+      <a class="btn sm" href="/reports/export/assetDistribution/csv/">Export CSV</a>
+      <a class="btn sm" href="/reports/export/assetDistribution/xlsx/">Export Excel</a>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="ams">
+      <thead><tr><th>Emp ID</th><th>Employee Name</th><th>Department</th><th>Designation</th><th>Direct</th><th>Team</th><th>Total</th></tr></thead>
+      <tbody>
+        {% for r in dist_rows %}
+        <tr>
+          <td class="mono">{{ r.emp.display_emp_id }}</td>
+          <td>{{ r.emp.name }}</td>
+          <td>{{ r.emp.department.name|default:"-" }}</td>
+          <td>{{ r.emp.designation|default:"-" }}</td>
+          <td class="num">{{ r.direct }}</td>
+          <td class="num">{{ r.team }}</td>
+          <td class="num"><strong>{{ r.total }}</strong></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7"><div class="empty-state">No employees match the current filters.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}

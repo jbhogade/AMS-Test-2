@@ -1,0 +1,49 @@
+{% load ams_extras %}
+<form method="post" action="/access-rights/{{ prof.pk }}/save/">
+  {% csrf_token %}
+  <p class="small muted" style="margin-top:0;">
+    <strong class="mono">{{ prof.user.username }}</strong> &middot; {{ prof.role }} &mdash;
+    None = hidden. View = open the page but cannot save. Full = read and write.
+    Locked checkboxes follow the account's role.
+  </p>
+  <h3 style="font-size:.86rem; margin:12px 0 8px;">Pages</h3>
+  <div class="checks">
+    {% for k in pages_block %}
+      <label>
+        <input type="checkbox" {% if current|get_item:k == 'full' %}checked{% endif %}
+               {% if k in supreme_only %}disabled{% endif %}
+               onchange="this.checked ? setAR('{{ k }}','full') : setAR('{{ k }}','none')">
+        {{ page_labels|get_label:k }}{% if k in supreme_only %} <span class="badge badge-red">role-locked</span>{% endif %}
+      </label>
+    {% endfor %}
+  </div>
+  <h3 style="font-size:.86rem; margin:14px 0 8px;">Reports (Report Master)</h3>
+  <div class="checks">
+    {% for k in reports_block %}
+      <label>
+        <input type="checkbox" {% if current|get_item:k == 'full' %}checked{% endif %}
+               onchange="this.checked ? setAR('{{ k }}','full') : setAR('{{ k }}','none')">
+        {{ page_labels|get_label:k }}
+      </label>
+    {% endfor %}
+  </div>
+  <div class="mt flex">
+    <button type="button" class="btn sm" onclick="document.querySelectorAll('#m-ar input[type=checkbox]:not([disabled])').forEach(c => { c.checked = true; markAR(c, 'full'); })">Select All</button>
+    <button type="button" class="btn sm" onclick="document.querySelectorAll('#m-ar input[type=checkbox]:not([disabled])').forEach(c => { c.checked = false; markAR(c, 'none'); })">Clear All</button>
+    <span class="spacer" style="flex:1;"></span>
+    <button class="btn primary" type="submit">Save Access Rights</button>
+  </div>
+  <input type="hidden" name="levels_json" id="ar-levels" value="{{ levels_json }}">
+</form>
+<script>
+  var AR = JSON.parse(document.getElementById("ar-levels").value);
+  function setAR(k, v) { AR[k] = v; document.getElementById("ar-levels").value = JSON.stringify(AR); }
+  function markAR(cb, v) {
+    var onchange = cb.getAttribute("onchange") || "";
+    var m = onchange.match(/setAR\('([^']+)'/);
+    if (m) setAR(m[1], v);
+  }
+  document.querySelectorAll("#m-ar input[type=checkbox]").forEach(function (cb) {
+    cb.addEventListener("change", function () { markAR(cb, cb.checked ? "full" : "none"); });
+  });
+</script>

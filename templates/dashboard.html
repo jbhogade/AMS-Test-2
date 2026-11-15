@@ -1,0 +1,178 @@
+{% extends "base_shell.html" %}
+{% load ams_extras %}
+{% block title %}Dashboard - {{ portal_name }}{% endblock %}
+{% block page_title %}Welcome back, {{ ams_profile.display_name|default:user.username }}{% endblock %}
+{% block page_sub %}Here is the current status of your company inventory.{% endblock %}
+
+{% block content %}
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-icon">&#9635;</div>
+    <div>
+      <div class="kpi-value">{{ kpi_total }}</div>
+      <div class="kpi-label">Total Assets</div>
+      <div class="kpi-trend">All records</div>
+    </div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-icon" style="color: var(--ok); background: rgba(22,163,74,.12);">&#10003;</div>
+    <div>
+      <div class="kpi-value">{{ kpi_operational }}</div>
+      <div class="kpi-label">Operational</div>
+      <div class="kpi-trend">Assigned or In Store</div>
+    </div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-icon" style="color: var(--warn); background: rgba(217,119,6,.12);">&#128295;</div>
+    <div>
+      <div class="kpi-value">{{ kpi_maintenance }}</div>
+      <div class="kpi-label">Under Maintenance</div>
+      <div class="kpi-trend">In Repair or Not Working</div>
+    </div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-icon" style="color: #0891b2; background: rgba(8,145,178,.12);">&#8377;</div>
+    <div>
+      <div class="kpi-value">{{ kpi_value|inr }}</div>
+      <div class="kpi-label">Total Asset Value</div>
+      <div class="kpi-trend">Book value</div>
+    </div>
+  </div>
+</div>
+
+<div class="dash-cols">
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>Assets by Type</h2><span class="spacer"></span><span class="head-sub">count per type</span></div>
+      <div class="card-body">
+        {% if by_type_rows %}
+          {% for name, count in by_type_rows %}
+            <div class="bar-row">
+              <div class="bar-label">{{ name }}</div>
+              <div class="bar-track"><div class="bar-fill" style="width: {% widthratio count max_count 100 %}%;"></div></div>
+              <div class="bar-count">{{ count }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">No assets yet. Add assets in the Asset Master to see the chart.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Recent Assets</h2><span class="spacer"></span>
+        {% if can_assets %}<a class="btn sm ghost" href="/assets/">View all assets &rsaquo;</a>{% endif %}
+      </div>
+      <div class="card-body flush table-wrap">
+        <table class="ams">
+          <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Location</th><th>Status</th><th class="num">Value</th></tr></thead>
+          <tbody>
+            {% for a in recent_assets %}
+              <tr>
+                <td class="mono"><a href="/items/{{ a.pk }}/view/">{{ a.base_display_id }}</a></td>
+                <td>{{ a.name|default:"-" }}</td>
+                <td>{{ a.type.name|default:"-" }}</td>
+                <td>{{ a.current_site.name|default:"-" }}</td>
+                <td>{{ a.status|asset_badge }}</td>
+                <td class="num">{{ a.purchase_cost|inr }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="6"><div class="empty-state">No assets recorded yet.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Recent Stock Movements</h2></div>
+      <div class="card-body flush table-wrap">
+        <table class="ams">
+          <thead><tr><th>Date</th><th>Item</th><th>Type</th><th class="num">Qty</th><th>By</th></tr></thead>
+          <tbody>
+            {% for m in recent_moves %}
+              <tr>
+                <td>{{ m.date|dmy }}</td>
+                <td>{{ m.name }}</td>
+                <td>{{ m.type|asset_badge }}</td>
+                <td class="num">{{ m.qty }}</td>
+                <td>{{ m.by|default:"-" }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5"><div class="empty-state">No restock/used movements yet.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>Asset Status</h2></div>
+      <div class="card-body">
+        {% if donut %}
+        <div class="donut-wrap">
+          <svg width="150" height="150" viewBox="0 0 170 170">
+            {% with r=70 cx=85 cy=85 %}
+              <circle cx="{{ cx }}" cy="{{ cy }}" r="{{ r }}" fill="none" stroke="var(--bg-inset)" stroke-width="16"/>
+              {% with running=0 %}
+              {% for d in donut %}
+                {% widthratio d.count donut_total 100 as pct %}
+                <circle cx="{{ cx }}" cy="{{ cy }}" r="{{ r }}" fill="none" stroke="{{ d.color }}" stroke-width="16"
+                  stroke-dasharray="{% widthratio d.count donut_total 100 %} 100"
+                  transform="rotate(-90 {{ cx }} {{ cy }})" pathLength="100" opacity="0.95"/>
+              {% endfor %}
+              {% endwith %}
+              <text x="{{ cx }}" y="81" text-anchor="middle" font-size="26" font-weight="800" fill="var(--text)">{{ donut_total }}</text>
+              <text x="{{ cx }}" y="101" text-anchor="middle" font-size="10" fill="var(--muted)">Total Assets</text>
+            {% endwith %}
+          </svg>
+          <div class="legend">
+            {% for d in donut %}
+              <div class="legend-row"><span class="legend-dot" style="background: {{ d.color }};"></span>{{ d.status }}<span class="legend-count">{{ d.count }}</span></div>
+            {% endfor %}
+          </div>
+        </div>
+        {% else %}
+          <div class="empty-state">No assets yet.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Low Stock Alerts</h2><span class="spacer"></span>
+        {% if low %}<span class="badge badge-amber">Action needed</span>{% endif %}
+      </div>
+      <div class="card-body">
+        {% if low %}
+          {% for item in low %}
+            <div class="flex" style="padding: 5px 0; border-bottom: 1px solid var(--border);">
+              <span style="color: var(--warn);">&#9888;</span>
+              <div><strong style="font-size:0.82rem;">{{ item.name }}</strong>
+                <div class="small muted">{{ item.kind }} &middot; Stock: {{ item.qty }}{% if item.unit %} {{ item.unit.name }}{% endif %}</div>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">All items are above reorder level.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Recent Activity</h2></div>
+      <div class="card-body">
+        {% for e in recent_activity %}
+          <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">
+            <div style="font-size: 0.8rem;">{{ e.message }}</div>
+            <div class="small muted">{{ e.time|dmyhm }} &middot; {{ e.actor_role|default:"System" }}</div>
+          </div>
+        {% empty %}
+          <div class="empty-state">No activity recorded yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

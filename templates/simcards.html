@@ -1,0 +1,249 @@
+{% extends "base_shell.html" %}
+{% load ams_extras %}
+{% block title %}SIM Cards - {{ portal_name }}{% endblock %}
+{% block page_title %}SIM Card Master{% endblock %}
+{% block page_sub %}Mobile SIMs issued to employees. The phone is tracked separately as a Mobile.{% endblock %}
+
+{% block content %}
+<div class="viewing-bar no-print"><span>Signed-in Role:</span> {{ ams_role|role_badge }}</div>
+
+<div class="status-tiles no-print">
+  <div class="status-tile"><div class="v">{{ tiles.total }}</div><div class="l">Total SIM Cards</div></div>
+  <div class="status-tile"><div class="v">{{ tiles.in_store }}</div><div class="l">In Store</div></div>
+  <div class="status-tile"><div class="v">{{ tiles.issued }}</div><div class="l">Issued</div></div>
+  <div class="status-tile"><div class="v">{{ tiles.blocked }}</div><div class="l">Blocked / Retired</div></div>
+</div>
+
+<div class="card">
+  <div class="filter-bar">
+    <form method="get" action="/sim-cards/" class="flex" style="gap:9px; flex:1;">
+      <div class="f"><span>Search</span>
+        <input class="input" type="text" name="q" value="{{ q }}" placeholder="SIM ID, number, ICCID, holder...">
+      </div>
+      <div class="f"><span>Status</span>
+        <select class="input" name="status">
+          <option value="">All</option>
+          {% for code, label in statuses %}
+            <option value="{{ code }}" {% if status_f == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn sm" type="submit">Apply</button>
+      <a class="btn sm ghost" href="/sim-cards/">Clear</a>
+    </form>
+    <div class="btn-row no-print">
+      {% if can_write %}<button class="btn primary" data-open-modal="m-sim">&#43; Add SIM Card</button>{% endif %}
+      <a class="btn sm" href="/sim-cards/csv/template/">CSV Template</a>
+      <a class="btn sm" href="/sim-cards/csv/export/">Export CSV</a>
+      {% if can_write %}<button class="btn" data-open-modal="m-import">Import CSV</button>{% endif %}
+    </div>
+  </div>
+
+  {% if import_report %}
+  <div class="card-head" style="background: var(--bg-inset);"><h2>Import Report - {{ import_report.title }}</h2><span class="spacer"></span><span class="head-sub">{{ import_report.rows|length }} row(s)</span></div>
+  <div class="card-body flush table-wrap">
+    <table class="ams import-report">
+      <thead><tr><th>#</th><th>Result</th><th>Reason</th></tr></thead>
+      <tbody>{% for r in import_report.rows %}<tr><td>{{ r.no }}</td><td class="result-{{ r.result }}">{{ r.result }}</td><td>{{ r.reason|default:"-" }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="card-body flush table-wrap">
+    <table class="ams">
+      <thead>
+        <tr><th>SIM ID</th><th>Mobile Number</th><th>ICCID</th><th>Operator</th><th>Plan</th><th>Site</th>
+            <th>Used In</th><th>Assigned To</th><th>Status</th><th class="no-print right">Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for s in rows %}
+        <tr>
+          <td class="mono"><strong>{{ s.sim_id }}</strong></td>
+          <td class="mono">{{ s.mobile_number }}</td>
+          <td class="mono small">{{ s.iccid|default:"-" }}</td>
+          <td>{{ s.operator.name|default:"-" }}</td>
+          <td>{{ s.plan.name|default:"-" }}</td>
+          <td>{{ s.site.name|default:"-" }}</td>
+          <td>{% if s.personal_mobile %}Personal Mobile{% elif s.linked_mobile %}<span class="mono">{{ s.linked_mobile.base_display_id }}</span>{% else %}-{% endif %}</td>
+          <td>{{ s.assigned_to.name|default:"-" }}</td>
+          <td>{{ s.status|asset_badge }}</td>
+          <td class="actions-cell no-print">
+            {% if can_write %}
+              {% if s.status == 'In Store' %}
+                <button class="btn sm primary" data-open-modal="m-sim-assign" data-pk="{{ s.pk }}" data-sid="{{ s.sim_id }}">Assign</button>
+              {% endif %}
+              {% if s.status == 'Issued' %}
+                <button class="btn sm ghost" data-open-modal="m-sim-assign" data-pk="{{ s.pk }}" data-sid="{{ s.sim_id }}" data-edit="1"
+                  data-emp="{{ s.assigned_to.pk }}" data-sub="{{ s.assigned_to_sub.pk }}" data-subtext="{{ s.assigned_sub_text }}"
+                  data-date="{{ s.assigned_date|date:'Y-m-d' }}"
+                  data-mobile="{% if s.personal_mobile %}__personal__{% elif s.linked_mobile %}{{ s.linked_mobile.pk }}{% endif %}">Edit Assign</button>
+                <button class="btn sm ghost" data-open-modal="m-sim-return" data-pk="{{ s.pk }}">Return</button>
+                <a class="btn sm ghost" href="/sim-cards/{{ s.pk }}/issue-form/" target="_blank">Issue Form</a>
+              {% endif %}
+              {% if s.status != 'Blocked' and s.status != 'Retired' %}
+                <button class="btn sm ghost" data-open-modal="m-sim-block" data-pk="{{ s.pk }}">Block</button>
+              {% endif %}
+              {% if s.status != 'Retired' %}
+                <button class="btn sm ghost" data-open-modal="m-sim-retire" data-pk="{{ s.pk }}">Retire</button>
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="10"><div class="empty-state">No SIM cards yet.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if can_write %}
+<dialog class="modal wide" id="m-sim">
+  <form method="post" action="/sim-cards/save/">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Add SIM Card</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Mobile Number <span class="req">*</span></span>
+          <input class="input mono" name="mobile_number" required placeholder="e.g. 98765 43210"></label>
+        <label class="field"><span class="lbl">SIM Serial / ICCID</span>
+          <input class="input mono" name="iccid"></label>
+        <label class="field"><span class="lbl">Operator</span>
+          <input class="input" name="operator_name" list="op-list" placeholder="pick or type to create">
+          <datalist id="op-list">{% for o in operators %}<option value="{{ o.name }}">{{ o.name }}</option>{% endfor %}</datalist></label>
+        <label class="field"><span class="lbl">Plan</span>
+          <input class="input" name="plan_name" list="plan-list" placeholder="pick or type to create">
+          <datalist id="plan-list">{% for p in plans %}<option value="{{ p.name }}">{{ p.name }}</option>{% endfor %}</datalist></label>
+        <label class="field"><span class="lbl">Status</span>
+          <select class="input" name="status">{% for code, label in statuses %}<option>{{ label }}</option>{% endfor %}</select></label>
+        <label class="field"><span class="lbl">Site</span>
+          <select class="input" name="site"><option value="">(None)</option>
+            {% for s in sites %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endfor %}</select></label>
+        <label class="field"><span class="lbl">Activation Date</span>
+          <input class="input" type="date" name="activation_date"></label>
+        <label class="field"><span class="lbl">Vendor</span>
+          <select class="input" name="vendor"><option value="">(None)</option>
+            {% for v in vendors %}<option value="{{ v.pk }}">{{ v.name }}</option>{% endfor %}</select></label>
+        <label class="field"><span class="lbl">Cost (₹)</span>
+          <input class="input" type="number" step="0.01" min="0" name="cost"></label>
+        <label class="field full"><span class="lbl">Remarks</span>
+          <textarea class="input" name="remarks"></textarea></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Save SIM Card</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="modal wide" id="m-sim-assign">
+  <form method="post" action="">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Assign - <span class="mono" id="sim-assign-sid"></span></h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Direct Employee <span class="req">*</span></span>
+          <select class="input" name="sim_assign_emp" required>
+            <option value="">- Select -</option>
+            {% for e in emps %}<option value="{{ e.pk }}">{{ e.name }} ({{ e.display_emp_id }})</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Subordinate / Actual User</span>
+          <select class="input" name="sim_assign_sub">
+            <option value="">None</option>
+            <option value="__other__">Other / Not in User Master...</option>
+            {% for e in emps %}<option value="{{ e.pk }}">{{ e.name }} ({{ e.display_emp_id }})</option>{% endfor %}
+          </select></label>
+        <label class="field" id="sim-sub-text-wrap" style="display:none;"><span class="lbl">Other - Name</span>
+          <input class="input" name="sim_assign_sub_text"></label>
+        <label class="field"><span class="lbl">Used In Mobile</span>
+          <select class="input" name="sim_assign_mobile">
+            <option value="">None</option>
+            <option value="__personal__">Personal Mobile</option>
+            {% for m in eligible_mobiles %}<option value="{{ m.pk }}">{{ m.base_display_id }} - {{ m.make_model|default:m.type.name }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="lbl">Date <span class="req">*</span></span>
+          <input class="input" type="date" name="sim_assign_date" value="{% now 'Y-m-d' %}"></label>
+        <label class="field full"><span class="lbl">Remarks</span>
+          <input class="input" name="sim_assign_remarks"></label>
+      </div>
+      <p class="small muted">Linking an In-Store phone issues that phone too; picking a SIM on a Mobile Master record works the other way round.</p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Save Assignment</button>
+    </div>
+  </form>
+</dialog>
+
+{% for mid, heading, btn in simple_modals %}
+<dialog class="modal" id="{{ mid }}">
+  <form method="post" action="">
+    {% csrf_token %}
+    <div class="modal-head"><h3>{{ heading }}</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body"><p class="small muted" id="{{ mid }}-text"></p></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn {% if mid == 'm-sim-retire' %}danger{% else %}primary{% endif %}" type="submit">{{ btn }}</button>
+    </div>
+  </form>
+</dialog>
+{% endfor %}
+
+<dialog class="modal" id="m-import">
+  <form method="post" action="/sim-cards/csv/import/" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Import SIM Cards (CSV)</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <p class="small muted">Matched on Mobile Number (or SIM ID). Operators/plans auto-register; sites must exist.</p>
+      <input class="input" type="file" name="file" accept=".csv,text/csv" required>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Import</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+document.addEventListener("click", function (e) {
+  var opener = e.target.closest("[data-open-modal]");
+  if (!opener) return;
+  var id = opener.getAttribute("data-open-modal");
+  var pk = opener.getAttribute("data-pk");
+  var map = {
+    "m-sim-assign": "/sim-cards/" + pk + "/assign/",
+    "m-sim-return": "/sim-cards/" + pk + "/return/",
+    "m-sim-block": "/sim-cards/" + pk + "/block/",
+    "m-sim-retire": "/sim-cards/" + pk + "/retire/"
+  };
+  var form = document.querySelector("#" + id + " form");
+  if (form && map[id]) form.action = map[id];
+  if (id === "m-sim-assign") {
+    document.getElementById("sim-assign-sid").textContent = opener.getAttribute("data-sid") || "";
+    if (opener.getAttribute("data-edit")) {
+      var f = form;
+      f.querySelector("[name=sim_assign_emp]").value = opener.getAttribute("data-emp") || "";
+      f.querySelector("[name=sim_assign_sub]").value = opener.getAttribute("data-sub") || "";
+      f.querySelector("[name=sim_assign_sub_text]").value = opener.getAttribute("data-subtext") || "";
+      f.querySelector("[name=sim_assign_date]").value = opener.getAttribute("data-date") || "";
+      f.querySelector("[name=sim_assign_mobile]").value = opener.getAttribute("data-mobile") || "";
+    }
+  }
+  if (id === "m-sim-return" || id === "m-sim-block" || id === "m-sim-retire") {
+    var t = document.getElementById(id + "-text");
+    if (t) t.textContent = opener.getAttribute("data-text") || "Confirm this action. It is recorded in the SIM lifecycle history.";
+  }
+});
+document.addEventListener("change", function (e) {
+  if (e.target.name === "sim_assign_sub") {
+    document.getElementById("sim-sub-text-wrap").style.display = e.target.value === "__other__" ? "" : "none";
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

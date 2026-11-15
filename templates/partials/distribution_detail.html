@@ -1,0 +1,60 @@
+{% load ams_extras %}
+<h3 class="mono" style="font-size:.95rem;">{{ emp.name }} ({{ emp.display_emp_id }}) - Asset Detail</h3>
+<p class="small muted">Direct = personally held by the employee. Team = held by the employee's subordinates,
+or assigned to the employee with a subordinate/team member recorded as the actual user.
+Direct: {{ direct|length }} &middot; Team: {{ team|length }}</p>
+
+<h4 style="font-size:.82rem;">Direct (Personal Use) - {{ direct|length }}</h4>
+<div class="table-wrap">
+  <table class="ams">
+    <thead><tr><th>Asset ID (Full)</th><th>Type</th><th>Make / Model</th><th>Serial / Number</th><th>Status</th><th>Kind</th></tr></thead>
+    <tbody>
+      {% for h in direct %}
+      <tr>
+        <td class="mono">{{ h.pid }}</td>
+        <td>{% if h.kind == 'sim' %}SIM Card{% else %}{{ h.a.type.name|default:"-" }}{% endif %}</td>
+        <td>{% if h.kind == 'sim' %}{{ h.a.operator.name|default:"-" }} / {{ h.a.plan.name|default:"-" }}{% else %}{{ h.a.make_model|default:"-" }}{% endif %}</td>
+        <td class="mono small">{{ h.serial|default:"-" }}</td>
+        <td>{{ h.a.status|asset_badge }}</td>
+        <td>{{ "Direct"|asset_badge }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="6"><div class="empty-state">No direct holdings.</div></td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h4 style="font-size:.82rem;" class="mt">Team / Subordinate Use - {{ team|length }}</h4>
+<div class="table-wrap">
+  <table class="ams">
+    <thead><tr><th>Asset ID (Full)</th><th>Type</th><th>Make / Model</th><th>Serial / Number</th><th>Status</th><th>Kind</th></tr></thead>
+    <tbody>
+      {% for h in team %}
+      <tr>
+        <td class="mono">{{ h.pid }}</td>
+        <td>{% if h.kind == 'sim' %}SIM Card{% else %}{{ h.a.type.name|default:"-" }}{% endif %}</td>
+        <td>{% if h.kind == 'sim' %}{{ h.a.operator.name|default:"-" }} / {{ h.a.plan.name|default:"-" }}{% else %}{{ h.a.make_model|default:"-" }}{% endif %}</td>
+        <td class="mono small">{{ h.serial|default:"-" }}</td>
+        <td>{{ h.a.status|asset_badge }}</td>
+        <td>{{ "Team"|asset_badge }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="6"><div class="empty-state">No team holdings.</div></td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h4 style="font-size:.82rem;" class="mt">Complete Lifecycle - {{ events|length }} record(s)</h4>
+<div class="table-wrap">
+  <table class="ams">
+    <thead><tr><th>Date</th><th>Event</th><th>Asset ID</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for e in events %}
+      <tr>
+        <td class="mono">{{ e.date|dmy }}</td>
+        <td>{{ e.action }}</td>
+        <td class="mono">{{ e.item_label }}</td>
+        <td>{{ e.status_label }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="4"><div class="empty-state">No lifecycle records.</div></td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>

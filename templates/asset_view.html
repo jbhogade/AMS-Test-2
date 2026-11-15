@@ -1,0 +1,86 @@
+{% extends "base_shell.html" %}
+{% load ams_extras %}
+{% block title %}{{ print_id }} - Detail{% endblock %}
+{% block page_title %}{{ print_id }}{% endblock %}
+{% block page_sub %}{{ a.type.name|default:"-" }} &middot; {{ a.make_model|default:"-" }} &middot; {{ a.status }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-head"><h2>Record Details</h2><span class="spacer"></span>{{ a.status|asset_badge }}</div>
+  <div class="card-body">
+    <div class="detail-grid">
+      <div class="detail-cell"><div class="l">Display ID (Base)</div><div class="v mono">{{ a.base_display_id }}</div></div>
+      <div class="detail-cell"><div class="l">AMS ID (permanent)</div><div class="v mono">{{ a.ams_asset_id }}</div></div>
+      {% if a.is_legacy_id %}<div class="detail-cell"><div class="l">ID Origin</div><div class="v">Typed / legacy (never auto-suffixed)</div></div>{% endif %}
+      <div class="detail-cell"><div class="l">Category</div><div class="v">{{ a.category.name|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">Type</div><div class="v">{{ a.type.name|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">Make</div><div class="v">{{ a.make.name|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">Name</div><div class="v">{{ a.name|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">{% if a.kind == 'mobile' %}Model Number{% else %}Model{% endif %}</div><div class="v">{{ a.model|default:a.model_number|default:"-" }}</div></div>
+      {% if a.kind == 'mobile' %}
+        <div class="detail-cell"><div class="l">IMEI 1 / 2</div><div class="v mono">{{ a.imei1|default:"-" }} / {{ a.imei2|default:"-" }}</div></div>
+        <div class="detail-cell"><div class="l">Battery / Charger</div><div class="v mono">{{ a.battery_no|default:"-" }} / {{ a.charger_no|default:"-" }}</div></div>
+        <div class="detail-cell"><div class="l">SIM Card</div><div class="v">{{ a.sim.mobile_number|default:"-" }}</div></div>
+      {% endif %}
+      <div class="detail-cell"><div class="l">Serial Number</div><div class="v mono">{{ a.serial_number|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">Purchase Site</div><div class="v">{{ a.purchase_site.name|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">Current Site</div><div class="v">{{ a.current_site.name|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">Purchase Date</div><div class="v">{{ a.purchase_date|dmy }}</div></div>
+      <div class="detail-cell"><div class="l">Warranty End</div><div class="v">{{ a.warranty_end|dmy }}</div></div>
+      <div class="detail-cell"><div class="l">Vendor</div><div class="v">{{ a.vendor.name|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">Purchase Cost</div><div class="v">{{ a.purchase_cost|inr }}</div></div>
+      <div class="detail-cell"><div class="l">Assigned To</div><div class="v">{{ a.assigned_to.name|default:"-" }}{% if a.assigned_to %} <span class="small muted">({{ a.assigned_to.display_emp_id }})</span>{% endif %}</div></div>
+      {% if a.actual_user_label %}<div class="detail-cell"><div class="l">Actual User</div><div class="v">{{ a.actual_user_label }}</div></div>{% endif %}
+      <div class="detail-cell"><div class="l">Date of Issue</div><div class="v">{{ a.assigned_date|dmy }}</div></div>
+      <div class="detail-cell"><div class="l">Return Date</div><div class="v">{{ a.return_date|dmy }}</div></div>
+      {% if a.replaces_asset %}<div class="detail-cell"><div class="l">Replacement For</div><div class="v mono">{{ a.replaces_asset.base_display_id }}</div></div>{% endif %}
+      {% if replaced_by %}<div class="detail-cell"><div class="l">Replaced By</div><div class="v mono"><a href="/items/{{ replaced_by.pk }}/view/">{{ replaced_by.base_display_id }}</a></div></div>{% endif %}
+      <div class="detail-cell"><div class="l">Accessories</div><div class="v">{{ a.accessories.all|join:", "|default:"-" }}</div></div>
+      <div class="detail-cell"><div class="l">Remarks</div><div class="v">{{ a.remarks|default:"-" }}</div></div>
+    </div>
+    <div class="mt no-print">
+      <a class="btn ghost" href="{% if a.kind == 'mobile' %}/mobiles/{% else %}/assets/{% endif %}">&larr; Back to {{ a.kind|capfirst }} Master</a>
+    </div>
+  </div>
+</div>
+
+{% if spare_used %}
+<div class="card">
+  <div class="card-head"><h2>Spare Parts Used</h2></div>
+  <div class="card-body flush table-wrap">
+    <table class="ams">
+      <thead><tr><th>Date</th><th>Part</th><th class="num">Qty</th><th>Used By</th><th>Remarks</th></tr></thead>
+      <tbody>
+        {% for m in spare_used %}
+          <tr><td>{{ m.date|dmy }}</td><td>{{ m.name }}</td><td class="num">{{ m.qty }}</td><td>{{ m.by }}</td><td>{{ m.remarks|default:"-" }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-head"><h2>Asset ID Record - Lifecycle History</h2></div>
+  <div class="card-body flush table-wrap">
+    <table class="ams">
+      <thead><tr><th>Date</th><th>Action</th><th>Employee</th><th>Department</th><th>Status</th><th>Note</th><th>By</th></tr></thead>
+      <tbody>
+        {% for h in history %}
+          <tr>
+            <td>{{ h.date|dmy }}</td>
+            <td><span class="badge {% if h.event_type == 'Assign' %}badge-green{% elif h.event_type == 'Return' %}badge-blue{% elif h.event_type == 'Retire' or h.event_type == 'Fault' %}badge-red{% elif h.event_type == 'Replace' %}badge-grey{% else %}badge-amber{% endif %}">{{ h.action }}</span></td>
+            <td>{{ h.emp_label|default:"-" }}</td>
+            <td>{{ h.emp_dept|default:"-" }}</td>
+            <td>{{ h.status_label }}</td>
+            <td class="small">{{ h.note|default:"-" }}</td>
+            <td class="small muted">{{ h.actor_username|default:"-" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7"><div class="empty-state">No lifecycle events yet.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

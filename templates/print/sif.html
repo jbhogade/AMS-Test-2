@@ -1,0 +1,62 @@
+{% extends "print/base_print.html" %}
+{% load ams_extras %}
+{% block print_body %}
+<div class="pf-doc landscape">
+  <div class="pf-header">
+    {% if prefs.show_logo and company.logo %}<img class="pf-logo" src="{{ company.logo.url }}" alt="logo">{% endif %}
+    <div class="pf-company-block">
+      {% if prefs.show_name %}<div class="pf-company">{{ company.name }}</div>{% endif %}
+      {% if prefs.show_slogan and company.slogan %}<div class="pf-company-tag">{{ company.slogan }}</div>{% endif %}
+    </div>
+    <div class="pf-formmeta">
+      <div class="pf-form-title pf-title-issue">SIM CARD ISSUE FORM</div>
+      <div><strong>Form No:</strong> {{ form_no }}</div>
+      <div><strong>Date Generated:</strong> {{ today }}</div>
+    </div>
+  </div>
+
+  <div class="pf-section-bar">Issued To</div>
+  <div class="pf-box-grid cols-2">
+    <div class="pf-box"><div class="pf-box-label">Employee ID</div><div class="pf-box-value mono">{{ emp.display_emp_id }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Full Name</div><div class="pf-box-value">{{ emp.name }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Department</div><div class="pf-box-value">{{ emp.department.name|default:"-" }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Designation</div><div class="pf-box-value">{{ emp.designation|default:"-" }}</div></div>
+  </div>
+
+  <div class="pf-section-bar">SIM Card Issued</div>
+  <table class="pf-asset-table">
+    <thead><tr><th style="width:26px;">#</th><th>SIM ID</th><th>Mobile Number</th><th>ICCID</th><th>Operator</th><th>Plan</th><th>Site</th><th>Used In</th><th>Status</th><th>Date of Issue</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>1</td><td class="mono">{{ sim.sim_id }}</td><td class="mono">{{ sim.mobile_number }}</td>
+        <td class="mono">{{ sim.iccid|default:"-" }}</td>
+        <td>{{ sim.operator.name|default:"-" }}</td><td>{{ sim.plan.name|default:"-" }}</td>
+        <td>{{ sim.site.name|default:"-" }}</td><td>{{ used_in }}</td><td>{{ sim.status }}</td>
+        <td>{{ sim.assigned_date|dmy }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="pf-section-bar">Remarks / Notes</div>
+  <div class="pf-notes-box">
+    {% if sim.remarks %}<div><strong>{{ sim.sim_id }} - Remarks (on record):</strong> {{ sim.remarks }}</div>
+    {% else %}<div class="pf-notes-empty">No remarks recorded against the SIM card in the system.</div>{% endif %}
+  </div>
+
+  {% if terms %}
+  <div class="pf-section-bar">Declaration</div>
+  <ol class="pf-declaration">{% for t in terms %}<li>{{ t.text }}</li>{% endfor %}</ol>
+  {% endif %}
+
+  <div class="pf-sign-grid">
+    <div class="pf-sign-box"><div class="pf-sign-line"></div><div class="pf-sign-label">Authorised By<br>Signature &amp; Date</div></div>
+    <div class="pf-sign-box"><div class="pf-sign-line"></div><div class="pf-sign-label">Issued By (IT / Admin)<br>Signature &amp; Date</div></div>
+    <div class="pf-sign-box"><div class="pf-sign-line"></div><div class="pf-sign-label">Employee<br>Signature &amp; Date</div></div>
+  </div>
+
+  <div class="pf-footer">
+    <span>AMS-Test-2 &middot; Generated electronically</span>
+    <span>Internal Ref: {{ form_no }} &middot; 1 SIM card(s) issued</span>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% load ams_extras %}
+<div id="logs-panel">
+  <div class="card" style="margin-bottom:0; {% if hub %}box-shadow:none;{% endif %}">
+    <div class="filter-bar">
+      <form method="get" action="/logs/" class="flex" style="gap:9px; flex:1;">
+        <div class="f"><span>Search</span><input class="input" type="text" name="q" value="{{ q }}" placeholder="Message, page..."></div>
+        <div class="f"><span>Actor Role</span>
+          <select class="input" name="actor_role"><option value="">All</option>
+            {% for r in roles_present %}<option value="{{ r }}" {% if role_f == r %}selected{% endif %}>{{ r }}</option>{% endfor %}
+          </select></div>
+        <div class="f"><span>Page</span>
+          <select class="input" name="page"><option value="">All</option>
+            {% for p in pages_present %}<option value="{{ p }}" {% if page_f == p %}selected{% endif %}>{{ p }}</option>{% endfor %}
+          </select></div>
+        <div class="f"><span>From</span><input class="input" type="date" name="from" value="{{ from_f }}"></div>
+        <div class="f"><span>To</span><input class="input" type="date" name="to" value="{{ to_f }}"></div>
+        <button class="btn sm" type="submit">Apply</button>
+        <a class="btn sm ghost" href="/logs/">Clear filters</a>
+      </form>
+      <div class="btn-row no-print">
+        <a class="btn sm" href="/logs/export/csv/">Export CSV</a>
+        <a class="btn sm" href="/logs/export/xlsx/">Export Excel</a>
+        {% if role == 'Supreme Root' %}
+        <form method="post" action="/logs/clear/" style="display:inline;" data-confirm="Clear the entire activity log? This cannot be undone.">
+          {% csrf_token %}<button class="btn sm danger" type="submit">Clear Log</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-body" style="padding: 10px 16px 0;">
+      <div class="viewing-bar" style="margin-bottom:0;">
+        <span>Signed-in Role:</span>{{ role|role_badge }}
+        {% if role == 'Supreme Root' %}<span class="small muted">Full access - can see every record, including Super Root and Supreme Root.</span>
+        {% else %}<span class="small muted">Can see every record except ones logged while the actor was Supreme Root.</span>{% endif %}
+      </div>
+    </div>
+    <div class="card-body flush table-wrap">
+      <table class="ams">
+        <thead><tr><th>Time</th><th>Actor Role</th><th>Page</th><th>Type</th><th>Message</th></tr></thead>
+        <tbody>
+          {% for e in rows %}
+          <tr>
+            <td class="mono small">{{ e.time|dmyhm }}</td>
+            <td><span class="actor-badge {% if e.actor_role == 'Supreme Root' %}supreme{% elif e.actor_role == 'Super Root' %}super{% else %}other{% endif %}">{{ e.actor_role|default:"System" }}</span></td>
+            <td class="small">{{ e.page|default:"-" }}</td>
+            <td>{{ e.type|asset_badge }}</td>
+            <td>{{ e.message }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5"><div class="empty-state">No log entries match these filters.</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

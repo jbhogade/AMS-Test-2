@@ -1,0 +1,95 @@
+{% load ams_extras %}
+<div id="accessories-panel">
+  <div class="card" style="margin-bottom:0; {% if hub %}box-shadow:none;{% endif %}">
+    <div class="filter-bar">
+      <form method="get" action="/accessories/" class="flex" style="gap:9px; flex:1;">
+        <div class="f"><span>Search</span><input class="input" type="text" name="q" value="{{ q }}" placeholder="Accessory name..."></div>
+        <button class="btn sm" type="submit">Apply</button>
+        <a class="btn sm ghost" href="/accessories/">Clear</a>
+      </form>
+      {% if can_write %}<button class="btn primary" data-open-modal="m-acc">&#43; Add Accessory</button>{% endif %}
+    </div>
+    <div class="card-body flush table-wrap">
+      <table class="ams">
+        <thead><tr><th>Acc Code</th><th>Accessory Name</th><th>Asset Type</th><th>Site</th><th>Used By (assets)</th><th>Status</th><th class="no-print right">Actions</th></tr></thead>
+        <tbody>
+          {% for row in rows %}
+          <tr {% if not row.obj.active %}style="opacity:.5;"{% endif %}>
+            <td class="mono small">{{ row.obj.code }}</td>
+            <td><strong>{{ row.obj.name }}</strong></td>
+            <td>{{ row.obj.asset_type.name|default:"-" }}</td>
+            <td>{{ row.obj.site.name|default:"-" }}</td>
+            <td class="num">{{ row.usage }}</td>
+            <td>{% if row.obj.active %}{{ "Active"|asset_badge }}{% else %}{{ "Inactive"|asset_badge }}{% endif %}</td>
+            <td class="actions-cell no-print">
+              {% if can_write %}
+                <button class="btn sm ghost" data-open-modal="m-acc"
+                  data-edit="{{ row.obj.pk }}|{{ row.obj.name }}|{{ row.obj.asset_type.pk|default:'' }}|{{ row.obj.site.pk|default:'' }}|{{ row.obj.active }}">Edit</button>
+                <form method="post" action="/accessories/{{ row.obj.pk }}/toggle/" style="display:inline;">
+                  {% csrf_token %}<button class="btn sm ghost">{% if row.obj.active %}Deactivate{% else %}Activate{% endif %}</button>
+                </form>
+                <form method="post" action="/accessories/{{ row.obj.pk }}/delete/" style="display:inline;" data-confirm="Delete accessory '{{ row.obj.name }}'?">
+                  {% csrf_token %}<button class="btn sm danger" {% if row.usage > 0 %}disabled title="In use - cannot delete"{% endif %}>Delete</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7"><div class="empty-state">No accessories yet. accCode is auto-generated (ACC-000001...).</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if can_write %}
+<dialog class="modal" id="m-acc">
+  <form method="post" action="/accessories/save/">
+    {% csrf_token %}
+    <div class="modal-head"><h3 id="acc-title">Add Accessory</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Accessory Name <span class="req">*</span></span>
+          <input class="input" name="name" id="acc-name" required></label>
+        <label class="field"><span class="lbl">Asset Type <span class="req">*</span></span>
+          <select class="input" name="asset_type" id="acc-type" required><option value="">- Select -</option>
+            {% for t in types %}<option value="{{ t.pk }}">{{ t.name }}</option>{% endfor %}</select></label>
+        <label class="field"><span class="lbl">Site</span>
+          <select class="input" name="site" id="acc-site"><option value="">(None)</option>
+            {% for s in sites %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endfor %}</select></label>
+        <label class="field"><span class="lbl" style="display:flex; gap:8px; align-items:center;">
+          <input type="checkbox" name="active" value="1" id="acc-active" checked> Active</span></label>
+      </div>
+      <p class="small muted">Delete is blocked while any asset of that type currently has the accessory issued - deactivate instead.</p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Save Accessory</button>
+    </div>
+  </form>
+</dialog>
+<script>
+document.addEventListener("click", function (e) {
+  var opener = e.target.closest("[data-open-modal]");
+  if (!opener || opener.getAttribute("data-open-modal") !== "m-acc") return;
+  var edit = opener.getAttribute("data-edit");
+  var f = document.querySelector("#m-acc form");
+  if (edit) {
+    var p = edit.split("|");
+    document.getElementById("acc-title").textContent = "Edit Accessory";
+    if (!f.querySelector("[name=pk]")) { var h = document.createElement("input"); h.type = "hidden"; h.name = "pk"; f.appendChild(h); }
+    f.querySelector("[name=pk]").value = p[0];
+    f.querySelector("[name=name]").value = p[1];
+    f.querySelector("[name=asset_type]").value = p[2];
+    f.querySelector("[name=site]").value = p[3];
+    f.querySelector("[name=active]").checked = p[4] === "True";
+  } else {
+    document.getElementById("acc-title").textContent = "Add Accessory";
+    f.reset();
+    var pk = f.querySelector("[name=pk]"); if (pk) pk.remove();
+  }
+});
+</script>
+{% endif %}

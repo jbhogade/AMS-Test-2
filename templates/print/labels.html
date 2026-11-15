@@ -1,0 +1,12 @@
+{% extends "print/base_print.html" %}
+{% block print_body %}
+{% for page in pages %}
+<div class="label-page">
+  {% for cell in page %}
+    {% if cell %}<div class="label-cell"><div class="label-id">{{ cell }}</div></div>
+    {% else %}<div class="label-cell empty"></div>{% endif %}
+  {% endfor %}
+</div>
+{% endfor %}
+{% if not pages %}<div class="pf-doc"><p>No Display IDs selected.</p></div>{% endif %}
+{% endblock %}

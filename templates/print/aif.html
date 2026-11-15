@@ -1,0 +1,236 @@
+{% extends "print/base_print.html" %}
+{% load ams_extras %}
+{% block print_body %}
+<div class="pf-doc landscape">
+  {# ---------------- letterhead ---------------- #}
+  {% if prefs.style == 'banner' and company.banner %}
+    <div class="pf-header pf-header-banner">
+      <div style="width:100%;">
+        <div class="pf-banner-wrap"><img class="pf-banner" src="{{ company.banner.url }}" alt="banner"></div>
+        <div class="pf-header-row" style="display:flex; align-items:flex-end;">
+          <div class="pf-banner-caption" style="flex:1;">
+            {% if prefs.show_name %}<div class="pf-company">{{ company.name }}</div>{% endif %}
+            {% if prefs.show_slogan and company.slogan %}<div class="pf-company-tag">{{ company.slogan }}</div>{% endif %}
+          </div>
+          <div class="pf-formmeta">
+            <div class="pf-form-title pf-title-issue">ASSET ISSUE FORM</div>
+            <div><strong>Form No:</strong> {{ form_no }}</div>
+            <div><strong>Date Generated:</strong> {{ today }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="pf-header">
+      {% if prefs.show_logo and company.logo %}<img class="pf-logo" src="{{ company.logo.url }}" alt="logo">{% endif %}
+      <div class="pf-company-block">
+        {% if prefs.show_name %}<div class="pf-company">{{ company.name }}</div>{% endif %}
+        {% if prefs.show_slogan and company.slogan %}<div class="pf-company-tag">{{ company.slogan }}</div>{% endif %}
+      </div>
+      <div class="pf-formmeta">
+        <div class="pf-form-title pf-title-issue">ASSET ISSUE FORM</div>
+        <div><strong>Form No:</strong> {{ form_no }}</div>
+        <div><strong>Date Generated:</strong> {{ today }}</div>
+      </div>
+    </div>
+  {% endif %}
+
+  {# ---------------- Issued To ---------------- #}
+  <div class="pf-section-bar">Issued To</div>
+  <div class="pf-box-grid cols-2">
+    <div class="pf-box"><div class="pf-box-label">Employee ID</div><div class="pf-box-value mono">{{ emp.display_emp_id }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Full Name</div><div class="pf-box-value">{{ emp.name }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Department</div><div class="pf-box-value">{{ emp.department.name|default:"-" }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Designation</div><div class="pf-box-value">{{ emp.designation|default:"-" }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Reporting Manager</div><div class="pf-box-value">{{ emp.manager.name|default:"-" }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Assignment Type</div><div class="pf-box-value">{{ assign_type }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Expected Return</div><div class="pf-box-value">Not Specified</div></div>
+    <div class="pf-box"><div class="pf-box-label">Issued By</div><div class="pf-box-value">IT / Admin</div></div>
+  </div>
+
+  {# ---------------- Assets Issued ---------------- #}
+  {% if direct_assets %}
+  <div class="pf-section-bar">Assets Issued</div>
+  <table class="pf-asset-table">
+    <thead><tr><th style="width:26px;">#</th><th>Asset ID</th><th>Asset Name / Type</th><th>Site</th><th>Date of Issue</th><th>Physical Condition at Issue</th></tr></thead>
+    <tbody>
+      {% for a in direct_assets %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td class="mono">{% include "print/_asset_id.html" with item=a %}</td>
+        <td class="pf-wrap">{{ a.type.name|default:"-" }} ({{ a.make_model|default:"-" }})</td>
+        <td>{{ a.current_site.name|default:"-" }}</td>
+        <td>{{ a.assigned_date|dmy }}</td>
+        <td><span class="pf-check-inline"><span>Good</span><span>Needs Repair / Service</span><span>Damaged</span></span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if direct_mobiles %}
+  <div class="pf-section-bar">Mobiles Issued</div>
+  <table class="pf-asset-table">
+    <thead><tr><th style="width:26px;">#</th><th>Mobile ID</th><th>Type / Make / Model</th><th>IMEI No 1</th><th>IMEI No 2</th><th>Battery No</th><th>Charger No</th><th>Mobile No</th><th>Site</th><th>Date of Issue</th><th>Physical Condition at Issue</th></tr></thead>
+    <tbody>
+      {% for m in direct_mobiles %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td class="mono">{% include "print/_asset_id.html" with item=m %}</td>
+        <td class="pf-wrap">{{ m.type.name|default:"-" }} ({{ m.make_model|default:"-" }})</td>
+        <td class="mono">{{ m.imei1|default:"-" }}</td>
+        <td class="mono">{{ m.imei2|default:"-" }}</td>
+        <td>{{ m.battery_no|default:"-" }}</td>
+        <td>{{ m.charger_no|default:"-" }}</td>
+        <td class="mono">{{ m.sim.mobile_number|default:"-" }}</td>
+        <td>{{ m.current_site.name|default:"-" }}</td>
+        <td>{{ m.assigned_date|dmy }}</td>
+        <td><span class="pf-check-inline"><span>Good</span><span>Needs Repair / Service</span><span>Damaged</span></span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if direct_sims %}
+  <div class="pf-section-bar">SIM Cards Issued</div>
+  <table class="pf-asset-table">
+    <thead><tr><th style="width:26px;">#</th><th>SIM ID</th><th>Mobile Number</th><th>Operator</th><th>Plan</th><th>Site</th><th>Used In</th><th>Status</th><th>Date of Issue</th></tr></thead>
+    <tbody>
+      {% for s in direct_sims %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td class="mono">{{ s.sim_id }}</td>
+        <td class="mono">{{ s.mobile_number }}</td>
+        <td>{{ s.operator.name|default:"-" }}</td>
+        <td>{{ s.plan.name|default:"-" }}</td>
+        <td>{{ s.site.name|default:"-" }}</td>
+        <td>{% if s.personal_mobile %}Personal Mobile{% elif s.linked_mobile %}{{ s.linked_mobile.base_display_id }}{% else %}-{% endif %}</td>
+        <td>{{ s.status }}</td>
+        <td>{{ s.assigned_date|dmy }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if not direct_assets and not direct_mobiles and not direct_sims and scope == 'direct' %}
+    <table class="pf-asset-table"><tbody><tr><td>No assets currently on record for this employee</td></tr></tbody></table>
+  {% endif %}
+
+  {# ---------------- Team / Subordinates ---------------- #}
+  {% if team_assets %}
+  <div class="pf-section-bar">Assets Currently Assigned to Subordinates (For Reference)</div>
+  <table class="pf-asset-table">
+    <thead><tr><th style="width:26px;">#</th><th>Asset ID</th><th>Type</th><th>Held By</th><th>Employee ID</th><th>Site</th><th>Date of Issue</th></tr></thead>
+    <tbody>
+      {% for a in team_assets %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td class="mono">{% include "print/_asset_id.html" with item=a %}</td>
+        <td>{{ a.type.name|default:"-" }}</td>
+        <td>{{ a.assigned_to.name|default:"-" }}</td>
+        <td class="mono">{{ a.assigned_to.emp_id|default:"-" }}</td>
+        <td>{{ a.current_site.name|default:"-" }}</td>
+        <td>{{ a.assigned_date|dmy }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if team_mobiles %}
+  <div class="pf-section-bar">Mobiles Currently Assigned to Subordinates (For Reference)</div>
+  <table class="pf-asset-table">
+    <thead><tr><th style="width:26px;">#</th><th>Mobile ID</th><th>Type / Make / Model</th><th>IMEI No 1</th><th>Mobile No</th><th>Held By</th><th>Employee ID</th><th>Site</th><th>Date of Issue</th></tr></thead>
+    <tbody>
+      {% for m in team_mobiles %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td class="mono">{% include "print/_asset_id.html" with item=m %}</td>
+        <td class="pf-wrap">{{ m.type.name|default:"-" }} ({{ m.make_model|default:"-" }})</td>
+        <td class="mono">{{ m.imei1|default:"-" }}</td>
+        <td class="mono">{{ m.sim.mobile_number|default:"-" }}</td>
+        <td>{{ m.assigned_to.name|default:"-" }}</td>
+        <td class="mono">{{ m.assigned_to.emp_id|default:"-" }}</td>
+        <td>{{ m.current_site.name|default:"-" }}</td>
+        <td>{{ m.assigned_date|dmy }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if team_sims %}
+  <div class="pf-section-bar">SIM Cards Currently Assigned to Subordinates (For Reference)</div>
+  <table class="pf-asset-table">
+    <thead><tr><th style="width:26px;">#</th><th>SIM ID</th><th>Mobile Number</th><th>Operator</th><th>Plan</th><th>Site</th><th>Held By</th><th>Employee ID</th><th>Date of Issue</th></tr></thead>
+    <tbody>
+      {% for s in team_sims %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td class="mono">{{ s.sim_id }}</td>
+        <td class="mono">{{ s.mobile_number }}</td>
+        <td>{{ s.operator.name|default:"-" }}</td>
+        <td>{{ s.plan.name|default:"-" }}</td>
+        <td>{{ s.site.name|default:"-" }}</td>
+        <td>{{ s.assigned_to.name|default:"-" }}</td>
+        <td class="mono">{{ s.assigned_to.emp_id|default:"-" }}</td>
+        <td>{{ s.assigned_date|dmy }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {# ---------------- Accessories ---------------- #}
+  {% with acc_list=direct_assets acc_list2=direct_mobiles %}
+  {% if direct_assets or direct_mobiles %}
+  <div class="pf-section-bar">Accessories / Items Included</div>
+  <div class="pf-checklist-grid">
+    {% for a in direct_assets %}{% for acc in a.accessories.all %}<div>&#9745; {{ acc.name }} <span class="mono small">({% include "print/_asset_id.html" with item=a %})</span></div>{% endfor %}{% endfor %}
+    {% for m in direct_mobiles %}{% for acc in m.accessories.all %}<div>&#9745; {{ acc.name }} <span class="mono small">({% include "print/_asset_id.html" with item=m %})</span></div>{% endfor %}{% endfor %}
+    {% if not direct_assets and not direct_mobiles %}<div>-</div>{% endif %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  {# ---------------- Remarks ---------------- #}
+  <div class="pf-section-bar">Remarks / Notes</div>
+  <div class="pf-notes-box">
+    {% for a in direct_assets %}{% if a.remarks %}<div><strong>{% include "print/_asset_id.html" with item=a %} - Remarks (on record):</strong> {{ a.remarks }}</div>{% endif %}{% endfor %}
+    {% for m in direct_mobiles %}{% if m.remarks %}<div><strong>{% include "print/_asset_id.html" with item=m %} - Remarks (on record):</strong> {{ m.remarks }}</div>{% endif %}{% endfor %}
+    {% if not direct_assets and not direct_mobiles %}<div class="pf-notes-empty">No remarks recorded against the asset(s) in the system.</div>{% endif %}
+  </div>
+
+  {# ---------------- Additional Remarks ---------------- #}
+  <div class="pf-section-bar accent">Additional Remarks/Notes (IT/HR/Admin)</div>
+  <div class="pf-additional-box">
+    <div class="pf-notes-empty">(Blank - to be filled in writing by IT / HR / Admin, if applicable)</div>
+    <div class="pf-additional-sign">
+      <span>Name &amp; Signature (IT / HR / Admin): _______________________________</span>
+      <span>Date: ________________</span>
+    </div>
+  </div>
+
+  {# ---------------- Terms ---------------- #}
+  {% if terms %}
+  <div class="pf-section-bar">Declaration</div>
+  <ol class="pf-declaration">
+    {% for t in terms %}<li>{{ t.text }}</li>{% endfor %}
+  </ol>
+  {% endif %}
+
+  {# ---------------- Signatures ---------------- #}
+  <div class="pf-sign-grid">
+    <div class="pf-sign-box"><div class="pf-sign-line"></div><div class="pf-sign-label">Authorised By<br>Signature &amp; Date</div></div>
+    <div class="pf-sign-box"><div class="pf-sign-line"></div><div class="pf-sign-label">Issued By (IT / Admin)<br>Signature &amp; Date</div></div>
+    <div class="pf-sign-box"><div class="pf-sign-line"></div><div class="pf-sign-label">Employee<br>Signature &amp; Date</div></div>
+  </div>
+
+  <div class="pf-footer">
+    <span>AMS-Test-2 &middot; Generated electronically</span>
+    <span>Internal Ref: {{ form_no }} &middot; {{ n_assets }} asset(s) issued &middot; {{ n_team_assets }} team, {{ n_mobiles }} mobile(s), {{ n_sims }} SIM(s)</span>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base_shell.html" %}
+{% load ams_extras %}
+{% block title %}My Profile{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+{% block page_sub %}Display name, contact details and password.{% endblock %}
+
+{% block content %}
+<div class="dash-cols">
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>Profile Details</h2></div>
+      <div class="card-body">
+        <form method="post" action="/profile/save/">
+          {% csrf_token %}
+          <div class="form-grid">
+            <label class="field"><span class="lbl">Display Name</span>
+              <input class="input" name="display_name" maxlength="200" value="{{ prof.display_name }}"></label>
+            <label class="field"><span class="lbl">Email</span>
+              <input class="input" type="email" name="email" value="{{ prof.email }}"></label>
+            <label class="field"><span class="lbl">Contact No.</span>
+              <input class="input" name="contact_no" maxlength="50" value="{{ prof.contact_no }}"></label>
+            <label class="field"><span class="lbl">Gender</span>
+              <select class="input" name="gender">
+                <option value="">(Not set)</option>
+                <option {% if prof.gender == 'Male' %}selected{% endif %}>Male</option>
+                <option {% if prof.gender == 'Female' %}selected{% endif %}>Female</option>
+                <option {% if prof.gender == 'Other' %}selected{% endif %}>Other</option>
+              </select></label>
+            <label class="field"><span class="lbl">Date of Birth</span>
+              <input class="input" type="date" name="dob" value="{{ prof.dob|date:'Y-m-d' }}"></label>
+            <label class="field full"><span class="lbl">Address</span>
+              <textarea class="input" name="address" maxlength="500">{{ prof.address }}</textarea></label>
+          </div>
+          <button class="btn primary" type="submit">Save Profile</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>Account</h2></div>
+      <div class="card-body">
+        <div class="flex" style="margin-bottom:12px;">
+          <span class="avatar" style="width:44px; height:44px; font-size:1rem; border-radius:12px;">{{ prof.display_name|default:user.username|slice:":2"|upper }}</span>
+          <div>
+            <div style="font-weight:700;">{{ prof.display_name|default:user.username }}</div>
+            <div class="small muted mono">{{ user.username }} &middot; {{ ams_role }}</div>
+          </div>
+        </div>
+        <form method="post" action="/profile/password/">
+          {% csrf_token %}
+          <label class="field"><span class="lbl">Current Password</span>
+            <span class="pw-input"><input class="input" type="password" name="current"><span class="toggle pw-toggle">Show</span></span></label>
+          <label class="field"><span class="lbl">New Password</span>
+            <span class="pw-input"><input class="input" type="password" name="new"><span class="toggle pw-toggle">Show</span></span></label>
+          <label class="field"><span class="lbl">Confirm New Password</span>
+            <input class="input" type="password" name="confirm"></label>
+          <button class="btn" type="submit">Change Password</button>
+          <p class="small muted">Minimum 6 characters.</p>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

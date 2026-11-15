@@ -1,0 +1,117 @@
+{% load ams_extras %}
+<div id="vendors-panel">
+  <div class="card" style="margin-bottom:0; {% if hub %}box-shadow:none;{% endif %}">
+    <div class="filter-bar">
+      <form method="get" action="/vendors/" class="flex" style="gap:9px; flex:1;">
+        <div class="f"><span>Search</span><input class="input" type="text" name="q" value="{{ q }}" placeholder="Vendor name..."></div>
+        <button class="btn sm" type="submit">Apply</button>
+        <a class="btn sm ghost" href="/vendors/">Clear</a>
+      </form>
+      {% if can_write %}<button class="btn primary" data-open-modal="m-ven">&#43; Add Vendor</button>{% endif %}
+    </div>
+    <div class="card-body flush table-wrap">
+      <table class="ams">
+        <thead><tr><th>Vendor Name</th><th>Contact Person</th><th>Phone</th><th>Email</th><th>City</th><th>Supplies</th><th>GSTIN</th><th>Used By</th><th>Status</th><th class="no-print right">Actions</th></tr></thead>
+        <tbody>
+          {% for row in rows %}
+          <tr {% if not row.obj.active %}style="opacity:.5;"{% endif %}>
+            <td><strong>{{ row.obj.name }}</strong></td>
+            <td>{{ row.obj.contact_person|default:"-" }}</td>
+            <td class="mono small">{{ row.obj.phone|default:"-" }}</td>
+            <td>{{ row.obj.email|default:"-" }}</td>
+            <td>{{ row.obj.city|default:"-" }}</td>
+            <td>{% for c in row.obj.categories.all %}<span class="badge badge-grey">{{ c.name }}</span> {% empty %}-{% endfor %}</td>
+            <td class="mono small">{{ row.obj.gstin|default:"-" }}</td>
+            <td class="num">{{ row.usage }}</td>
+            <td>{% if row.obj.active %}{{ "Active"|asset_badge }}{% else %}{{ "Inactive"|asset_badge }}{% endif %}</td>
+            <td class="actions-cell no-print">
+              {% if can_write %}
+                <button class="btn sm ghost" data-open-modal="m-ven"
+                  data-edit="{{ row.obj.pk }}|{{ row.obj.name }}|{{ row.obj.contact_person }}|{{ row.obj.phone }}|{{ row.obj.email }}|{{ row.obj.city }}|{{ row.obj.gstin }}|{{ row.obj.remarks }}|{{ row.obj.active }}">Edit</button>
+                <form method="post" action="/vendors/{{ row.obj.pk }}/toggle/" style="display:inline;">
+                  {% csrf_token %}<button class="btn sm ghost">{% if row.obj.active %}Deactivate{% else %}Activate{% endif %}</button>
+                </form>
+                <form method="post" action="/vendors/{{ row.obj.pk }}/delete/" style="display:inline;" data-confirm="Delete vendor '{{ row.obj.name }}'?">
+                  {% csrf_token %}<button class="btn sm danger" {% if row.usage > 0 %}disabled title="In use - cannot delete"{% endif %}>Delete</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="10"><div class="empty-state">No vendors yet. "Supplies" pick-lists come from the Vendor Category Master.</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if can_write %}
+<dialog class="modal wide" id="m-ven">
+  <form method="post" action="/vendors/save/">
+    {% csrf_token %}
+    <div class="modal-head"><h3 id="ven-title">Add Vendor</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Vendor Name <span class="req">*</span></span>
+          <input class="input" name="name" id="ven-name" required></label>
+        <label class="field"><span class="lbl">Contact Person</span>
+          <input class="input" name="contact_person" id="ven-contact"></label>
+        <label class="field"><span class="lbl">Phone</span>
+          <input class="input" name="phone" id="ven-phone"></label>
+        <label class="field"><span class="lbl">Email</span>
+          <input class="input" type="email" name="email" id="ven-email"></label>
+        <label class="field"><span class="lbl">City</span>
+          <input class="input" name="city" id="ven-city"></label>
+        <label class="field"><span class="lbl">GSTIN</span>
+          <input class="input mono" name="gstin" id="ven-gstin" maxlength="15" style="text-transform:uppercase;"></label>
+        <label class="field full"><span class="lbl">Supplies (multi-select from Vendor Category Master)</span>
+          <div class="checks">
+            {% for c in categories %}<label><input type="checkbox" name="categories" value="{{ c.pk }}"> {{ c.name }}</label>{% endfor %}
+          </div></label>
+        <label class="field full"><span class="lbl">Remarks</span>
+          <textarea class="input" name="remarks" id="ven-remarks"></textarea></label>
+        <label class="field full"><span class="lbl" style="display:flex; gap:8px; align-items:center;">
+          <input type="checkbox" name="active" value="1" id="ven-active" checked> Active</span></label>
+      </div>
+      <p class="small muted">Delete is blocked while any asset / consumable / spare part references the vendor - deactivate instead.</p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Save Vendor</button>
+    </div>
+  </form>
+</dialog>
+<script>
+document.addEventListener("click", function (e) {
+  var opener = e.target.closest("[data-open-modal]");
+  if (!opener || opener.getAttribute("data-open-modal") !== "m-ven") return;
+  var edit = opener.getAttribute("data-edit");
+  var f = document.querySelector("#m-ven form");
+  if (edit) {
+    var p = edit.split("|");
+    document.getElementById("ven-title").textContent = "Edit Vendor";
+    if (!f.querySelector("[name=pk]")) { var h = document.createElement("input"); h.type = "hidden"; h.name = "pk"; f.appendChild(h); }
+    f.querySelector("[name=pk]").value = p[0];
+    f.querySelector("[name=name]").value = p[1];
+    f.querySelector("[name=contact_person]").value = p[2];
+    f.querySelector("[name=phone]").value = p[3];
+    f.querySelector("[name=email]").value = p[4];
+    f.querySelector("[name=city]").value = p[5];
+    f.querySelector("[name=gstin]").value = p[6];
+    f.querySelector("[name=remarks]").value = p[7];
+    f.querySelector("[name=active]").checked = p[8] === "True";
+    var catsMap = JSON.parse(document.getElementById("ven-cats").textContent);
+    var cats = catsMap[p[0]] || [];
+    f.querySelectorAll("[name=categories]").forEach(function (cb) { cb.checked = cats.indexOf(parseInt(cb.value, 10)) !== -1; });
+  } else {
+    document.getElementById("ven-title").textContent = "Add Vendor";
+    f.reset();
+    var pk = f.querySelector("[name=pk]"); if (pk) pk.remove();
+    f.querySelectorAll("[name=categories]").forEach(function (cb) { cb.checked = false; });
+  }
+});
+</script>
+<script type="application/json" id="ven-cats">{{ cats_map_json }}</script>
+{% endif %}

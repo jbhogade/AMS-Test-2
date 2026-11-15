@@ -1,0 +1,245 @@
+{% extends "base_shell.html" %}
+{% load ams_extras %}
+{% block title %}Spare Parts - {{ portal_name }}{% endblock %}
+{% block page_title %}Spare Parts Master{% endblock %}
+{% block page_sub %}Parts link permanently to the asset they were fitted on.{% endblock %}
+
+{% block content %}
+<div class="viewing-bar no-print"><span>Signed-in Role:</span> {{ ams_role|role_badge }}</div>
+
+<div class="status-tiles no-print">
+  <div class="status-tile"><div class="v">{{ tiles.total }}</div><div class="l">Total Parts</div></div>
+  <div class="status-tile"><div class="v">{{ tiles.ok }}</div><div class="l">Stock OK</div></div>
+  <div class="status-tile"><div class="v">{{ tiles.low }}</div><div class="l">Low Stock</div></div>
+  <div class="status-tile"><div class="v">{{ tiles.inactive }}</div><div class="l">Inactive</div></div>
+</div>
+
+<div class="card">
+  <div class="filter-bar">
+    <form method="get" action="/spare-parts/" class="flex" style="gap:9px; flex:1;">
+      <div class="f"><span>Search</span><input class="input" type="text" name="q" value="{{ q }}" placeholder="Part name..."></div>
+      <button class="btn sm" type="submit">Apply</button>
+      <a class="btn sm ghost" href="/spare-parts/">Clear</a>
+    </form>
+    <div class="btn-row no-print">
+      {% if can_write %}<button class="btn primary" data-open-modal="m-sp">&#43; Add Spare Part</button>{% endif %}
+      <a class="btn sm" href="/spare-parts/csv/template/">CSV Template</a>
+      <a class="btn sm" href="/spare-parts/csv/export/">Export CSV</a>
+      {% if can_write %}<button class="btn" data-open-modal="m-import">Import CSV</button>{% endif %}
+    </div>
+  </div>
+
+  {% if import_report %}
+  <div class="card-head" style="background: var(--bg-inset);"><h2>Import Report - {{ import_report.title }}</h2><span class="spacer"></span><span class="head-sub">{{ import_report.rows|length }} row(s)</span></div>
+  <div class="card-body flush table-wrap">
+    <table class="ams import-report"><thead><tr><th>#</th><th>Result</th><th>Reason</th></tr></thead>
+    <tbody>{% for r in import_report.rows %}<tr><td>{{ r.no }}</td><td class="result-{{ r.result }}">{{ r.result }}</td><td>{{ r.reason|default:"-" }}</td></tr>{% endfor %}</tbody></table>
+  </div>
+  {% endif %}
+
+  <div class="card-body flush table-wrap">
+    <table class="ams">
+      <thead><tr><th>Code</th><th>Part Name</th><th>Compatible Asset Type</th><th>Category</th><th>Site</th>
+        <th class="num">Qty</th><th class="num">Reorder</th><th>Stock Status</th><th>Vendor</th>
+        <th class="no-print right">Actions</th></tr></thead>
+      <tbody>
+        {% for it in rows %}
+        <tr {% if not it.active %}style="opacity:.55;"{% endif %}>
+          <td class="mono small">{{ it.code }}</td>
+          <td><strong>{{ it.name }}</strong></td>
+          <td>{{ it.asset_type.name|default:"-" }}</td>
+          <td>{{ it.category.name|default:"-" }}</td>
+          <td>{{ it.site.name|default:"-" }}</td>
+          <td class="num">{{ it.qty }}</td>
+          <td class="num">{{ it.reorder_level }}</td>
+          <td>{% if it.qty <= it.reorder_level %}{{ "Low Stock"|asset_badge }}{% else %}{{ "OK"|asset_badge }}{% endif %}</td>
+          <td>{{ it.vendor.name|default:"-" }}</td>
+          <td class="actions-cell no-print">
+            {% if can_write %}
+              <button class="btn sm primary" data-open-modal="m-restock" data-pk="{{ it.pk }}" data-name="{{ it.name }}">Restock</button>
+              <button class="btn sm ghost" data-open-modal="m-used" data-pk="{{ it.pk }}" data-name="{{ it.name }}" data-qty="{{ it.qty }}">Used / Assign</button>
+            {% endif %}
+            <button class="btn sm ghost" hx-get="/spare-parts/{{ it.pk }}/log/" hx-target="#log-dialog-body" data-open-modal="m-log">Log</button>
+            {% if can_write %}
+              <button class="btn sm ghost" data-open-modal="m-sp" data-edit="{{ it.pk }}|{{ it.name }}|{{ it.asset_type.pk|default:'' }}|{{ it.category.pk|default:'' }}|{{ it.site.pk|default:'' }}|{{ it.qty }}|{{ it.reorder_level }}|{{ it.unit_cost|default:'' }}|{{ it.vendor.pk|default:'' }}|{{ it.remarks }}|{{ it.active }}">Edit</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="10"><div class="empty-state">No spare parts yet.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if can_write %}
+<dialog class="modal wide" id="m-sp">
+  <form method="post" action="/spare-parts/save/">
+    {% csrf_token %}
+    <div class="modal-head"><h3 id="sp-title">Add Spare Part</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Part Name <span class="req">*</span></span>
+          <input class="input" name="name" id="sp-name" required></label>
+        <label class="field"><span class="lbl">Compatible Asset Type <span class="req">*</span></span>
+          <select class="input" name="asset_type" id="sp-type" required><option value="">- Select -</option>
+            {% for t in types %}<option value="{{ t.pk }}">{{ t.name }}</option>{% endfor %}</select></label>
+        <label class="field"><span class="lbl">Category <span class="req">*</span></span>
+          <select class="input" name="category" id="sp-category" required><option value="">- Select -</option>
+            {% for c in categories %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}</select></label>
+        <label class="field"><span class="lbl">Site <span class="req">*</span></span>
+          <select class="input" name="site" id="sp-site" required><option value="">- Select -</option>
+            {% for s in sites %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endfor %}</select></label>
+        <label class="field"><span class="lbl">Current Stock Quantity <span class="req">*</span></span>
+          <input class="input" type="number" min="0" step="1" name="qty" id="sp-qty" value="0" required></label>
+        <label class="field"><span class="lbl">Reorder Level <span class="req">*</span></span>
+          <input class="input" type="number" min="0" step="1" name="reorder_level" id="sp-reorder" value="0" required></label>
+        <label class="field"><span class="lbl">Last Restocked Date</span>
+          <input class="input" type="date" name="restock_date"></label>
+        <label class="field"><span class="lbl">Warranty End Date</span>
+          <input class="input" type="date" name="warranty_date"></label>
+        <label class="field"><span class="lbl">Unit Cost (₹)</span>
+          <input class="input" type="number" step="0.01" min="0" name="unit_cost" id="sp-cost"></label>
+        <label class="field"><span class="lbl">Vendor</span>
+          <select class="input" name="vendor" id="sp-vendor"><option value="">(None)</option>
+            {% for v in vendors %}<option value="{{ v.pk }}">{{ v.name }}</option>{% endfor %}</select></label>
+        <label class="field full"><span class="lbl">Remarks</span>
+          <textarea class="input" name="remarks" id="sp-remarks"></textarea></label>
+        <label class="field full"><span class="lbl" style="display:flex; gap:8px; align-items:center;">
+          <input type="checkbox" name="active" value="1" id="sp-active" checked> Active</span></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Save Spare Part</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="modal" id="m-restock">
+  <form method="post" action="">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Restock - <span id="restock-name"></span></h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Quantity Added <span class="req">*</span></span>
+          <input class="input" type="number" min="1" step="1" name="restock_qty" required></label>
+        <label class="field"><span class="lbl">Restock / Purchase Date <span class="req">*</span></span>
+          <input class="input" type="date" name="restock_date" value="{% now 'Y-m-d' %}"></label>
+        <label class="field"><span class="lbl">Vendor</span>
+          <select class="input" name="restock_vendor"><option value="">(keep current)</option>
+            {% for v in vendors %}<option value="{{ v.pk }}">{{ v.name }}</option>{% endfor %}</select></label>
+        <label class="field full"><span class="lbl">Remarks</span>
+          <input class="input" name="restock_remarks"></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Add Stock</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="modal wide" id="m-used">
+  <form method="post" action="">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Used / Assign - <span id="used-name"></span></h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field"><span class="lbl">Quantity Used <span class="req">*</span> <span class="small muted">(in stock: <span id="used-instock"></span>)</span></span>
+          <input class="input" type="number" min="1" step="1" name="used_qty" required></label>
+        <label class="field"><span class="lbl">Date <span class="req">*</span></span>
+          <input class="input" type="date" name="used_date" value="{% now 'Y-m-d' %}"></label>
+        <label class="field"><span class="lbl">Employee</span>
+          <select class="input" name="used_employee"><option value="">(None)</option>
+            {% for e in emps %}<option value="{{ e.pk }}">{{ e.name }}</option>{% endfor %}</select></label>
+        <label class="field"><span class="lbl">Department</span>
+          <select class="input" name="used_department"><option value="">(None)</option>
+            {% for d in departments %}<option value="{{ d.pk }}">{{ d.name }}</option>{% endfor %}</select></label>
+        <label class="field full"><span class="lbl">Used For Asset</span>
+          <select class="input" name="used_for_asset">
+            <option value="">(None)</option>
+            <optgroup label="Compatible ({{ '' }})">
+              {% for a in assets %}{% if a.type and a.type.name == 'Laptop' %}{% endif %}{% endfor %}
+            </optgroup>
+            {% for a in assets %}
+              <option value="{{ a.pk }}" data-type="{{ a.type.pk|default:'' }}">{{ a.base_display_id }} - {{ a.make_model|default:a.type.name }}</option>
+            {% endfor %}
+          </select></label>
+        <label class="field full"><span class="lbl">Remarks</span>
+          <input class="input" name="used_remarks"></label>
+      </div>
+      <p class="small muted">The link uses the asset's permanent AMS ID, so the association survives future Display ID changes.</p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Record Usage</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="modal wide" id="m-log">
+  <div class="modal-head"><h3>Movement Log</h3>
+    <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+  <div class="modal-body" id="log-dialog-body"><span class="spinner htmx-indicator"></span></div>
+</dialog>
+
+<dialog class="modal" id="m-import">
+  <form method="post" action="/spare-parts/csv/import/" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Import Spare Parts (CSV)</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <p class="small muted">Asset Types and sites are validated against the masters; categories auto-create.</p>
+      <input class="input" type="file" name="file" accept=".csv,text/csv" required>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Import</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+document.addEventListener("click", function (e) {
+  var opener = e.target.closest("[data-open-modal]");
+  if (!opener) return;
+  var id = opener.getAttribute("data-open-modal");
+  var pk = opener.getAttribute("data-pk");
+  if (id === "m-restock") {
+    document.querySelector("#m-restock form").action = "/spare-parts/" + pk + "/restock/";
+    document.getElementById("restock-name").textContent = opener.getAttribute("data-name") || "";
+  }
+  if (id === "m-used") {
+    document.querySelector("#m-used form").action = "/spare-parts/" + pk + "/used/";
+    document.getElementById("used-name").textContent = opener.getAttribute("data-name") || "";
+    document.getElementById("used-instock").textContent = opener.getAttribute("data-qty") || "0";
+    // filter Used-For-Asset options to the part's compatible type + Other Assets
+    var edit = opener.getAttribute("data-edit");
+  }
+  if (id === "m-sp") {
+    var edit = opener.getAttribute("data-edit");
+    var f = document.querySelector("#m-sp form");
+    if (edit) {
+      var p = edit.split("|");
+      document.getElementById("sp-title").textContent = "Edit Spare Part";
+      if (!f.querySelector("[name=pk]")) { var h = document.createElement("input"); h.type = "hidden"; h.name = "pk"; f.appendChild(h); }
+      f.querySelector("[name=pk]").value = p[0];
+      var set = function (n, v) { var el = f.querySelector("[name=" + n + "]"); if (el) el.value = v; };
+      set("name", p[1]); set("asset_type", p[2]); set("category", p[3]); set("site", p[4]);
+      set("qty", p[5]); set("reorder_level", p[6]); set("unit_cost", p[7]); set("vendor", p[8]);
+      set("remarks", p[9]); set("active", p[10] === "True" ? "1" : "");
+    } else {
+      document.getElementById("sp-title").textContent = "Add Spare Part";
+      f.reset();
+      var pkInput = f.querySelector("[name=pk]"); if (pkInput) pkInput.remove();
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

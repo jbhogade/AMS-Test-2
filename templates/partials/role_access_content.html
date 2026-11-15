@@ -1,0 +1,48 @@
+{% load ams_extras %}
+<div id="role-access-panel">
+  <div class="card" style="margin-bottom:0; {% if hub %}box-shadow:none;{% endif %}">
+    <div class="card-head"><h2>Role Access Master</h2><span class="spacer"></span>
+      <span class="head-sub">None = hidden. View = open the page but cannot save. Full = read and write.</span>
+      {% if can_write %}
+      <form method="post" action="/role-access/reset/" style="display:inline;" data-confirm="Reset the matrix to the suggested defaults?">
+        {% csrf_token %}<button class="btn sm" type="submit">Reset to Suggested Defaults</button>
+      </form>
+      {% endif %}
+    </div>
+    <div class="card-body" style="padding: 10px 16px 0;">
+      <div class="viewing-bar" style="margin-bottom:0;">
+        <span>Signed-in Role:</span>{{ role|role_badge }}
+        <span class="small muted">Only Supreme Root can edit the matrix.</span>
+      </div>
+    </div>
+    {% if can_write %}<form method="post" action="/role-access/save/">{% csrf_token %}{% endif %}
+    <div class="card-body flush table-wrap">
+      <table class="ams">
+        <thead><tr><th>Page</th>{% for r in roles %}<th>{{ r }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for row in rows %}
+          <tr {% if row.is_report %}style="background: var(--bg-inset);"{% endif %}>
+            <td>{{ row.label }}</td>
+            {% for r in roles %}
+              <td>
+                <select class="input" name="level_{{ row.key }}_{{ r }}" style="padding:3px 6px; font-size:.72rem; min-width:80px;"
+                        {% if not can_write %}disabled{% endif %}>
+                  <option value="none" {% if row.levels|get_item:r == 'none' %}selected{% endif %}>None</option>
+                  <option value="view" {% if row.levels|get_item:r == 'view' %}selected{% endif %}>View</option>
+                  <option value="full" {% if row.levels|get_item:r == 'full' %}selected{% endif %}>Full</option>
+                </select>
+              </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if can_write %}
+    <div class="card-head" style="border-top:1px solid var(--border); border-bottom:none;">
+      <span class="spacer"></span><button class="btn primary" type="submit">Save Matrix</button>
+    </div>
+    </form>
+    {% endif %}
+  </div>
+</div>

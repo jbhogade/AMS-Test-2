@@ -1,0 +1,104 @@
+<div class="card">
+  <div class="tabbar no-print">
+    <button class="{% if tab == 'displayId' %}active{% endif %}" onclick="location.href='/label-pass-print/?tab=displayId'">Display ID Number</button>
+    <button class="{% if tab == 'gatePass' %}active{% endif %}" onclick="location.href='/label-pass-print/?tab=gatePass'">Gate Pass</button>
+    <span style="flex:1;"></span>
+    <span class="head-sub" id="lpp-count" style="align-self:center;">None selected</span>
+    <button class="btn sm no-print" onclick="lppExport()">Download Excel</button>
+    <button class="btn sm primary no-print" onclick="lppPrint()">Print</button>
+  </div>
+  <div class="card-body">
+    <div class="filter-bar no-print" style="border:none; padding: 0 0 12px;">
+      <div class="f"><span>Search</span>
+        <input class="input" type="text" value="{{ q }}" placeholder="Display ID, name, model, holder..."
+               onkeydown="if (event.key === 'Enter') { location.href='/label-pass-print/?tab={{ tab }}&q=' + encodeURIComponent(this.value); }"></div>
+    </div>
+
+    {% for s in sections %}
+      <div class="section-head">
+        <label class="flex" style="gap:6px; font-size:.78rem; font-weight:600;">
+          <input type="checkbox" class="lpp-select-all" data-section="{{ forloop.counter0 }}"> Select all
+        </label>
+        <h3>{{ s.title }}</h3>
+        <span class="meta">{{ s.items|length }} item(s)</span>
+        <span class="copies">Copies <input class="input" type="number" min="1" max="99" value="1" class="lpp-copies" data-section="{{ forloop.counter0 }}"></span>
+      </div>
+      {% if s.items %}
+      <div class="lpp-grid">
+        {% for a in s.items %}
+        <label class="lpp-tile" title="Assigned to: {{ a.assigned_to.name|default:'Unassigned' }}&#10;Name: {{ a.name|default:'-' }}&#10;Model: {{ a.make_model|default:'-' }}">
+          <input type="checkbox" class="lpp-item" data-section="{{ forloop.parentloop.counter0 }}"
+                 value="{{ a.pk }}" data-pid="{% if tab == 'gatePass' %}{{ a.serial_number|default:'-' }}{% else %}{{ a|pid }}{% endif %}"
+                 data-name="{{ a.name|default:'-' }}" data-model="{{ a.make_model|default:'-' }}"
+                 data-assigned="{{ a.assigned_to.name|default:'Unassigned' }}" data-emp-code="{{ a.assigned_to.emp_id|default:'-' }}">
+          <div class="lpp-tile-id">{{ a|pid }}</div>
+          <div class="lpp-tile-name">{{ a.name|default:"-" }}</div>
+          <div class="lpp-tile-model">{{ a.make_model|default:"-" }}</div>
+          <div class="lpp-tile-assigned">{{ a.assigned_to.name|default:"Unassigned" }}</div>
+        </label>
+        {% endfor %}
+      </div>
+      {% else %}
+        <div class="empty-state" style="padding: 12px;">No Display IDs in this section.</div>
+      {% endif %}
+    {% empty %}
+      <div class="empty-state">No Display IDs yet - add assets or mobiles first.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+function selected() {
+  var rows = [];
+  document.querySelectorAll(".lpp-item:checked").forEach(function (cb) {
+    var sec = parseInt(cb.getAttribute("data-section"), 10);
+    var copiesInput = document.querySelectorAll(".lpp-copies")[sec];
+    var copies = Math.max(1, Math.min(99, parseInt(copiesInput ? copiesInput.value : 1, 10) || 1));
+    for (var i = 0; i < copies; i++) rows.push({ id: cb.value, pid: cb.getAttribute("data-pid") });
+  });
+  return rows;
+}
+function updateCount() {
+  var rows = selected();
+  document.getElementById("lpp-count").textContent = rows.length ? rows.length + " selected" : "None selected";
+}
+document.addEventListener("change", function (e) {
+  if (e.target.classList.contains("lpp-item")) {
+    e.target.closest(".lpp-tile").classList.toggle("is-selected", e.target.checked);
+    updateCount();
+    // sync select-all
+    var sec = e.target.getAttribute("data-section");
+    var all = document.querySelectorAll('.lpp-item[data-section="' + sec + '"]');
+    var checked = document.querySelectorAll('.lpp-item[data-section="' + sec + '"]:checked');
+    var sa = document.querySelectorAll(".lpp-select-all")[sec];
+    if (sa) sa.checked = all.length === checked.length;
+  }
+  if (e.target.classList.contains("lpp-select-all")) {
+    var sec = e.target.getAttribute("data-section");
+    document.querySelectorAll('.lpp-item[data-section="' + sec + '"]').forEach(function (cb) {
+      cb.checked = e.target.checked;
+      cb.closest(".lpp-tile").classList.toggle("is-selected", cb.checked);
+    });
+    updateCount();
+  }
+});
+function lppPrint() {
+  var rows = selected();
+  if (!rows.length) { toast("Select at least one Display ID.", "warning"); return; }
+  var ids = rows.map(function (r) { return r.id; });
+  var copies = 1;
+  var url;
+  if ("{{ tab }}" === "gatePass") {
+    url = "/print/gatepass/?ids=" + ids.join(",") + "&copies=" + copies;
+  } else {
+    url = "/print/labels/?ids=" + ids.join(",");
+  }
+  window.open(url, "_blank");
+}
+function lppExport() {
+  var rows = selected();
+  if (!rows.length) { toast("Select at least one Display ID.", "warning"); return; }
+  var ids = rows.map(function (r) { return r.id; });
+  window.location.href = "/label-pass-print/export/?tab={{ tab }}&ids=" + ids.join(",");
+}
+</script>

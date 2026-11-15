@@ -1,0 +1,18 @@
+{% extends "print/base_print.html" %}
+{% block print_body %}
+<div class="pf-doc">
+  <div class="gp-sheet">
+    {% for c in cards %}
+    <div class="gp-card">
+      <div class="gp-title">Laptop Gate Pass</div>
+      <div class="gp-line">The Laptop Serial No. <strong>{{ c.serial }}</strong>, Asset Code No. <strong class="mono">{{ c.display_id }}</strong> is issued to</div>
+      <div class="gp-line"><strong>{{ c.emp_name }}</strong> (Employee ID <span class="mono">{{ c.emp_code }}</span>)</div>
+      <div class="gp-line">{{ company.address|default:"-" }}</div>
+      <div class="gp-stamp">Stamp &amp; Signature</div>
+    </div>
+    {% empty %}
+    <div class="gp-card">No Display IDs selected.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

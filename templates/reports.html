@@ -1,0 +1,70 @@
+{% extends "base_shell.html" %}
+{% load ams_extras %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Reports{% endblock %}
+{% block page_sub %}All reports in one place - view, filter, print and export.{% endblock %}
+
+{% block content %}
+<div class="viewing-bar no-print"><span>Signed-in Role:</span> {{ ams_role|role_badge }}</div>
+
+<div class="card no-print">
+  <div class="card-head"><h2>Report Appearance</h2><span class="spacer"></span>
+    <button class="btn sm" data-open-modal="m-appearance">Edit Appearance</button></div>
+  <div class="card-body flex">
+    <div class="detail-cell" style="min-width:200px;"><div class="l">Header Style</div><div class="v">{{ prefs.style|capfirst }}{% if prefs.style == 'classic' %} (Logo + Company Name){% else %} (Banner Image){% endif %}</div></div>
+    <div class="detail-cell"><div class="l">Show</div><div class="v small">{% if prefs.show_logo %}Logo{% endif %} {% if prefs.show_name %}&middot; Name{% endif %} {% if prefs.show_slogan %}&middot; Slogan{% endif %}</div></div>
+    <div class="detail-cell"><div class="l">Company Address</div><div class="v">Gate Pass only</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="tabbar no-print" id="report-tabs">
+    {% for key, label in tabs %}
+      <button data-tab="{{ key }}" class="{% if active_tab == key %}active{% endif %}" {% if not perms|get_item:'report.'|add:key %}{% endif %}>{{ label }}</button>
+    {% endfor %}
+  </div>
+  <div id="report-panel" class="card-body" {% if request.headers.get %}{% endif %}>
+    {% include "partials/report_content.html" %}
+  </div>
+</div>
+
+<!-- Appearance editor -->
+<dialog class="modal" id="m-appearance">
+  <form method="post" action="/reports/prefs/save/">
+    {% csrf_token %}
+    <div class="modal-head"><h3>Report Appearance</h3>
+      <button type="button" class="btn sm ghost x" data-close-modal>&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label class="field full"><span class="lbl">Header Style</span>
+          <div class="checks" style="grid-template-columns:1fr;">
+            <label><input type="radio" name="style" value="classic" {% if prefs.style == 'classic' %}checked{% endif %}> Logo + Company Name</label>
+            <label><input type="radio" name="style" value="banner" {% if prefs.style == 'banner' %}checked{% endif %}> Banner Image (full width)</label>
+          </div>
+          <span class="small muted">Banner uses the rectangular image saved in Company Master. If none is uploaded, the classic header is used.</span></label>
+        <label class="field full"><span class="lbl">Show on Print Header</span>
+          <div class="checks" style="grid-template-columns:1fr;">
+            <label><input type="checkbox" name="show_name" {% if prefs.show_name %}checked{% endif %}> Company Name</label>
+            <label><input type="checkbox" name="show_slogan" {% if prefs.show_slogan %}checked{% endif %}> Slogan / Tagline</label>
+            <label><input type="checkbox" name="show_logo" {% if prefs.show_logo %}checked{% endif %}> Logo</label>
+          </div>
+          <span class="small muted">Applies to printed reports and Issue/Handover Forms. Company address prints on Gate Pass only.</span></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close-modal>Cancel</button>
+      <button class="btn primary" type="submit">Save Appearance</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+document.getElementById("report-tabs").addEventListener("click", function (e) {
+  var btn = e.target.closest("button");
+  if (!btn) return;
+  document.querySelectorAll("#report-tabs button").forEach(function (b) { b.classList.remove("active"); });
+  btn.classList.add("active");
+  htmx.ajax("GET", "/reports/?tab=" + btn.getAttribute("data-tab") + "&panel=1", {target: "#report-panel", swap: "innerHTML"});
+});
+</script>
+{% endblock %}

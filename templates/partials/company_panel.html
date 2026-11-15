@@ -1,0 +1,41 @@
+{% load static %}
+<div id="company-panel">
+  <div class="card" style="margin-bottom:0; box-shadow:none;">
+    <div class="card-head"><h2>Company Master</h2><span class="spacer"></span>
+      <span class="head-sub">Feeds print letterheads. Address prints on the Laptop Gate Pass only.</span></div>
+    <div class="card-body">
+      <div class="small muted" style="margin-bottom:12px;">
+        Data storage: <b>{{ db_engine_label }}</b>
+        &nbsp;&middot;&nbsp; Logo / banner files are saved on this server under <b>media\company\</b> (not inside the database).
+      </div>
+      <form method="post" action="/company/save/" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-grid">
+          <label class="field"><span class="lbl">Company Name <span class="req">*</span></span>
+            <input class="input" name="name" value="{{ obj.name }}" placeholder="e.g. Acme Traders Pvt. Ltd." {% if not can_write %}disabled{% endif %}></label>
+          <label class="field"><span class="lbl">HR / Admin Contact No.</span>
+            <input class="input" name="hr_admin_contact" value="{{ obj.hr_admin_contact }}" {% if not can_write %}disabled{% endif %}></label>
+          <label class="field full"><span class="lbl">Address (prints on Gate Pass only)</span>
+            <textarea class="input" name="address" {% if not can_write %}disabled{% endif %}>{{ obj.address }}</textarea></label>
+          <label class="field"><span class="lbl">Company Slogan / Tagline</span>
+            <input class="input" name="slogan" maxlength="200" value="{{ obj.slogan }}" {% if not can_write %}disabled{% endif %}></label>
+          <label class="field"><span class="lbl">Main In-Charge / Head - Title</span>
+            <input class="input" name="head_title" value="{{ obj.head_title }}" placeholder="e.g. Plant In-Charge" {% if not can_write %}disabled{% endif %}></label>
+          <label class="field"><span class="lbl">Main In-Charge / Head - Contact No.</span>
+            <input class="input" name="head_contact" value="{{ obj.head_contact }}" {% if not can_write %}disabled{% endif %}></label>
+          <label class="field"><span class="lbl">Company Logo</span>
+            <input class="input" type="file" name="logo" accept="image/*" {% if not can_write %}disabled{% endif %}>
+            {% if obj.logo %}<div class="flex mt"><img src="{{ obj.logo.url }}" style="max-height:48px; border:1px solid var(--border); border-radius:8px; padding:3px;">
+              <label class="small muted" style="display:flex; gap:5px; align-items:center;"><input type="checkbox" name="remove_logo" value="1"> Remove</label></div>
+            {% else %}<div class="small muted mt">No logo set</div>{% endif %}</label>
+          <label class="field"><span class="lbl">Company Banner (rectangular, full-width letterhead)</span>
+            <input class="input" type="file" name="banner" accept="image/*" {% if not can_write %}disabled{% endif %}>
+            {% if obj.banner %}<div class="flex mt"><img src="{{ obj.banner.url }}" style="max-height:64px; border:1px solid var(--border); border-radius:8px; padding:3px;">
+              <label class="small muted" style="display:flex; gap:5px; align-items:center;"><input type="checkbox" name="remove_banner" value="1"> Remove</label></div>
+            {% else %}<div class="small muted mt">No banner set</div>{% endif %}</label>
+        </div>
+        {% if can_write %}<button class="btn primary" type="submit">Save Company Details</button>{% endif %}
+      </form>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,75 @@
+{% extends "print/base_print.html" %}
+{% load ams_extras %}
+{% block print_body %}
+<div class="pf-doc landscape">
+  <div class="pf-header">
+    {% if prefs.show_logo and company.logo %}<img class="pf-logo" src="{{ company.logo.url }}" alt="logo">{% endif %}
+    <div class="pf-company-block">
+      {% if prefs.show_name %}<div class="pf-company">{{ company.name }}</div>{% endif %}
+      {% if prefs.show_slogan and company.slogan %}<div class="pf-company-tag">{{ company.slogan }}</div>{% endif %}
+    </div>
+    <div class="pf-formmeta">
+      <div class="pf-form-title pf-title-issue">MOBILE ISSUE FORM</div>
+      <div><strong>Form No:</strong> {{ form_no }}</div>
+      <div><strong>Date Generated:</strong> {{ today }}</div>
+    </div>
+  </div>
+
+  <div class="pf-section-bar">Issued To</div>
+  <div class="pf-box-grid cols-2">
+    <div class="pf-box"><div class="pf-box-label">Employee ID</div><div class="pf-box-value mono">{{ emp.display_emp_id }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Full Name</div><div class="pf-box-value">{{ emp.name }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Department</div><div class="pf-box-value">{{ emp.department.name|default:"-" }}</div></div>
+    <div class="pf-box"><div class="pf-box-label">Designation</div><div class="pf-box-value">{{ emp.designation|default:"-" }}</div></div>
+  </div>
+
+  <div class="pf-section-bar">Mobile Issued</div>
+  <table class="pf-asset-table">
+    <thead><tr><th style="width:26px;">#</th><th>Mobile ID</th><th>Type / Make / Model</th><th>IMEI No 1</th><th>IMEI No 2</th><th>Battery No</th><th>Charger No</th><th>Mobile No</th><th>Site</th><th>Date of Issue</th><th>Physical Condition at Issue</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td class="mono">{{ print_id }}</td>
+        <td class="pf-wrap">{{ mobile.type.name|default:"-" }} ({{ mobile.make_model|default:"-" }})</td>
+        <td class="mono">{{ mobile.imei1|default:"-" }}</td>
+        <td class="mono">{{ mobile.imei2|default:"-" }}</td>
+        <td>{{ mobile.battery_no|default:"-" }}</td>
+        <td>{{ mobile.charger_no|default:"-" }}</td>
+        <td class="mono">{{ mobile.sim.mobile_number|default:"-" }}</td>
+        <td>{{ mobile.current_site.name|default:"-" }}</td>
+        <td>{{ mobile.assigned_date|dmy }}</td>
+        <td><span class="pf-check-inline"><span>Good</span><span>Needs Repair / Service</span><span>Damaged</span></span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  {% if mobile.accessories.all %}
+  <div class="pf-section-bar">Accessories / Items Included</div>
+  <div class="pf-checklist-grid">
+    {% for acc in mobile.accessories.all %}<div>&#9745; {{ acc.name }}</div>{% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="pf-section-bar">Remarks / Notes</div>
+  <div class="pf-notes-box">
+    {% if mobile.remarks %}<div><strong>{{ print_id }} - Remarks (on record):</strong> {{ mobile.remarks }}</div>
+    {% else %}<div class="pf-notes-empty">No remarks recorded against the mobile in the system.</div>{% endif %}
+  </div>
+
+  {% if terms %}
+  <div class="pf-section-bar">Declaration</div>
+  <ol class="pf-declaration">{% for t in terms %}<li>{{ t.text }}</li>{% endfor %}</ol>
+  {% endif %}
+
+  <div class="pf-sign-grid">
+    <div class="pf-sign-box"><div class="pf-sign-line"></div><div class="pf-sign-label">Authorised By<br>Signature &amp; Date</div></div>
+    <div class="pf-sign-box"><div class="pf-sign-line"></div><div class="pf-sign-label">Issued By (IT / Admin)<br>Signature &amp; Date</div></div>
+    <div class="pf-sign-box"><div class="pf-sign-line"></div><div class="pf-sign-label">Employee<br>Signature &amp; Date</div></div>
+  </div>
+
+  <div class="pf-footer">
+    <span>AMS-Test-2 &middot; Generated electronically</span>
+    <span>Internal Ref: {{ form_no }} &middot; 1 mobile(s) issued</span>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en" data-theme="{{ ams_profile.theme|default:'graphite' }}" data-font-size="{{ ams_profile.font_size|default:'md' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% block title %}{{ portal_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/ams.css' %}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230d9488'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'>A</text></svg>">
+  <script src="{% static 'js/htmx.min.js' %}" defer></script>
+  <script src="{% static 'js/app.js' %}" defer></script>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar no-print">
+    <div class="brand">
+      <div class="brand-glyph">A</div>
+      <div>
+        <div class="brand-name">{{ portal_name }}</div>
+        <div class="brand-sub">AMS-Test-2</div>
+      </div>
+    </div>
+    {% for section, items in nav_sections %}
+      <div class="nav-section">{{ section }}</div>
+      <nav class="nav">
+        {% for page_id, label, href in items %}
+          <a href="{{ href }}" class="{% if current_path == href %}active{% endif %}">
+            <span class="icon">{% if page_id == 'dashboard' %}&#9632;{% elif page_id == 'employees' %}&#9824;{% elif page_id == 'assets' %}&#9635;{% elif page_id == 'mobiles' %}&#9729;{% elif page_id == 'asset-distribution' %}&#9670;{% elif page_id == 'sim-cards' %}&#9679;{% elif page_id == 'consumables' %}&#9702;{% elif page_id == 'spare-parts' %}&#9881;{% elif page_id == 'accessories' %}&#10038;{% elif page_id == 'vendors' %}&#9744;{% elif page_id == 'reports' %}&#9638;{% elif page_id == 'system-admin' %}&#9878;{% elif page_id == 'user-master' %}&#9787;{% else %}&#9662;{% endif %}</span>
+            {{ label }}
+          </a>
+        {% endfor %}
+      </nav>
+    {% endfor %}
+    <div class="sidebar-foot">Django rebuild of AMS-Test<br>Blank cut &middot; v4.0</div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar no-print">
+      <div class="page-title">
+        <h1>{% block page_title %}{% endblock %}</h1>
+        <div class="sub">{% block page_sub %}{% endblock %}</div>
+      </div>
+      <div class="topbar-right">
+        <form method="post" action="/settings/save/" class="theme-chip" id="themeQuickForm">
+          {% csrf_token %}
+          <input type="hidden" name="tab" value="appearance">
+          <select class="input" name="theme" onchange="document.getElementById('themeQuickForm').submit()" title="Change theme">
+            {% for tid, tname, tkind, tdesc in themes %}
+              <option value="{{ tid }}" {% if ams_profile.theme == tid %}selected{% endif %}>{{ tname }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        <div class="bell" title="Activity log entries">
+          &#9993;{% if notif_count %}<span class="dot">{{ notif_count }}</span>{% endif %}
+        </div>
+        <div class="user-chip">
+          <button type="button">
+            <span class="avatar">{{ ams_profile.display_name|default:user.username|slice:":2"|upper }}</span>
+            {{ ams_profile.display_name|default:user.username }}
+            <span class="badge badge-grey">{{ ams_role }}</span>
+          </button>
+          <div class="user-menu">
+            <div class="role-line">Signed in as <strong>{{ user.username }}</strong><br>{{ ams_role }}</div>
+            <a href="/profile/">My Profile</a>
+            <a href="/settings/">Settings</a>
+            <a href="/logout/">Logout</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      {% if messages %}
+        <div class="toast-stack" style="top: 64px; bottom: auto;">
+          {% for message in messages %}
+            <div class="toast {{ message.tags }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+</body>
+</html>

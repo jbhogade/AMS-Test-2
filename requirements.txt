@@ -1,0 +1,14 @@
+Django>=5.0,<6.0
+openpyxl>=3.1
+
+# --- SQL Server mode ------------------------------------------------------
+# These are required only when AMS_DB=mssql is set. They are listed as
+# normal dependencies so pip installs them up-front on Windows; on systems
+# without an ODBC driver installed, pip install pyodbc will still succeed
+# (the failure only happens at runtime if the driver is missing).
+#
+# Pre-requisite on the SQL Server machine:
+#   Install "Microsoft ODBC Driver 18 for SQL Server" (msodbcsql18).
+#   Download: https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server
+mssql-django>=1.5
+pyodbc>=5.2
