@@ -5,30 +5,53 @@
 {% block page_sub %}Pick Display IDs by type, set copies per section, then print or download.{% endblock %}
 
 {% block content %}
+{% if sections %}
+{# ---------- STATE A: records exist - show the full picker page ---------- #}
 <div class="card">
-  <div class="tabbar no-print">
-    <button class="{% if tab == 'displayId' %}active{% endif %}" onclick="location.href='/label-pass-print/?tab=displayId'">Display ID Number</button>
-    <button class="{% if tab == 'gatePass' %}active{% endif %}" onclick="location.href='/label-pass-print/?tab=gatePass'">Gate Pass</button>
-    <span style="flex:1;"></span>
-    <span class="head-sub" id="lpp-count" style="align-self:center;">None selected</span>
-    <button class="btn sm no-print" onclick="lppExport()">Download Excel</button>
-    <button class="btn sm primary no-print" onclick="lppPrint()">Print</button>
+  <div class="lpp-toolbar no-print">
+    <div class="lpp-tabs">
+      <button class="lpp-tab {% if tab == 'displayId' %}active{% endif %}" onclick="location.href='/label-pass-print/?tab=displayId'">
+        <span class="lpp-tab-icon">&#9635;</span> Display ID Number
+      </button>
+      <button class="lpp-tab {% if tab == 'gatePass' %}active{% endif %}" onclick="location.href='/label-pass-print/?tab=gatePass'">
+        <span class="lpp-tab-icon">&#9999;</span> Gate Pass
+      </button>
+    </div>
+    <div class="lpp-toolbar-right">
+      <span class="lpp-count" id="lpp-count">None selected</span>
+      <button class="btn sm ghost" onclick="lppExport()" title="Download the picked Display IDs as an Excel sheet">
+        <span class="btn-icon">&#8681;</span> Download Excel
+      </button>
+      <button class="btn sm primary" onclick="lppPrint()" title="Open the print window">
+        <span class="btn-icon">&#128424;</span> Print
+      </button>
+    </div>
   </div>
+
   <div class="card-body">
-    <div class="filter-bar no-print" style="border:none; padding: 0 0 12px;">
-      <div class="f"><span>Search</span>
-        <input class="input" type="text" value="{{ q }}" placeholder="Display ID, name, model, holder..."
-               onkeydown="if (event.key === 'Enter') { location.href='/label-pass-print/?tab={{ tab }}&q=' + encodeURIComponent(this.value); }"></div>
+    <div class="lpp-filter no-print">
+      <form method="get" action="/label-pass-print/" class="lpp-search-form">
+        <input class="input" type="text" name="q" value="{{ q }}" placeholder="Search by Display ID, name, model, holder..."
+               onkeydown="if (event.key === 'Enter') { location.href='/label-pass-print/?tab={{ tab }}&q=' + encodeURIComponent(this.value); }">
+        <a class="btn sm ghost" href="/label-pass-print/?tab={{ tab }}">Clear</a>
+      </form>
+      {% if tab == 'gatePass' %}
+      <div class="lpp-purpose">
+        <span class="lpp-purpose-hint">Set <em>Copies</em> per section to print multiple identical passes (one per A4 page).</span>
+      </div>
+      {% endif %}
     </div>
 
     {% for s in sections %}
       <div class="section-head">
-        <label class="flex" style="gap:6px; font-size:.78rem; font-weight:600;">
+        <label class="lpp-select-all-label">
           <input type="checkbox" class="lpp-select-all" data-section="{{ forloop.counter0 }}"> Select all
         </label>
         <h3>{{ s.title }}</h3>
         <span class="meta">{{ s.items|length }} item(s)</span>
-        <span class="copies">Copies <input class="input" type="number" min="1" max="99" value="1" class="lpp-copies" data-section="{{ forloop.counter0 }}"></span>
+        <span class="copies">Copies
+          <input class="input" type="number" min="1" max="99" value="1" class="lpp-copies" data-section="{{ forloop.counter0 }}">
+        </span>
       </div>
       {% if s.items %}
       <div class="lpp-grid">
@@ -37,20 +60,33 @@
           <input type="checkbox" class="lpp-item" data-section="{{ forloop.parentloop.counter0 }}"
                  value="{{ a.pk }}" data-pid="{% if tab == 'gatePass' %}{{ a.serial_number|default:'-' }}{% else %}{{ a|pid }}{% endif %}"
                  data-name="{{ a.name|default:'-' }}" data-model="{{ a.make_model|default:'-' }}"
-                 data-assigned="{{ a.assigned_to.name|default:'Unassigned' }}" data-emp-code="{{ a.assigned_to.emp_id|default:'-' }}">
-          <div class="lpp-tile-id">{{ a|pid }}</div>
-          <div class="lpp-tile-name">{{ a.name|default:"-" }}</div>
-          <div class="lpp-tile-model">{{ a.make_model|default:"-" }}</div>
-          <div class="lpp-tile-assigned">{{ a.assigned_to.name|default:"Unassigned" }}</div>
+                 data-assigned="{{ a.assigned_to.name|default:'Unassigned' }}" data-emp-code="{{ a.assigned_to.ams_id|default:'-' }}">
+          <div class="lpp-tile-body">
+            <div class="lpp-tile-id">{{ a|pid }}</div>
+            <div class="lpp-tile-name">{{ a.name|default:"-" }}</div>
+            <div class="lpp-tile-model">{{ a.make_model|default:"-" }}</div>
+            <div class="lpp-tile-assigned">{{ a.assigned_to.name|default:"Unassigned" }}</div>
+          </div>
         </label>
         {% endfor %}
       </div>
       {% else %}
-        <div class="empty-state" style="padding: 12px;">No Display IDs in this section.</div>
+        <div class="empty-state" style="padding: 14px;">No Display IDs in this section.</div>
       {% endif %}
-    {% empty %}
-      <div class="empty-state">No Display IDs yet - add assets or mobiles first.</div>
     {% endfor %}
+
+    <div class="lpp-hint no-print">
+      <div class="lpp-hint-icon">&#9432;</div>
+      <div class="lpp-hint-body">
+        <strong>How this works:</strong> pick Display IDs from the tiles above (or
+        <em>Select all</em> for a whole section), set the <em>Copies</em> per section
+        if you need more than one label per ID, then click <em>Print</em> for an
+        A4 sticker sheet (Display ID tab) or an A4 gate pass per ID (Gate Pass tab),
+        or <em>Download Excel</em> to send the picked IDs to a third-party label
+        printer. The sticker sheet is a 7&times;16 grid of 26&times;17.7mm labels
+        matching standard A4 label stationery.
+      </div>
+    </div>
   </div>
 </div>
 
@@ -67,13 +103,14 @@ function selected() {
 }
 function updateCount() {
   var rows = selected();
-  document.getElementById("lpp-count").textContent = rows.length ? rows.length + " selected" : "None selected";
+  var el = document.getElementById("lpp-count");
+  el.textContent = rows.length ? rows.length + " selected" : "None selected";
+  el.classList.toggle("has-count", rows.length > 0);
 }
 document.addEventListener("change", function (e) {
   if (e.target.classList.contains("lpp-item")) {
     e.target.closest(".lpp-tile").classList.toggle("is-selected", e.target.checked);
     updateCount();
-    // sync select-all
     var sec = e.target.getAttribute("data-section");
     var all = document.querySelectorAll('.lpp-item[data-section="' + sec + '"]');
     var checked = document.querySelectorAll('.lpp-item[data-section="' + sec + '"]:checked');
@@ -92,12 +129,25 @@ document.addEventListener("change", function (e) {
 function lppPrint() {
   var rows = selected();
   if (!rows.length) { toast("Select at least one Display ID.", "warning"); return; }
-  var ids = rows.map(function (r) { return r.id; });
-  var copies = 1;
+  // For the sticker sheet (Display ID tab) the rows already contain copies
+  // duplicated, so ids can be sent as-is. For the Gate Pass tab the view
+  // needs ONE entry per asset plus a copies count so it prints one A4 page
+  // per copy (each pass is identical, matching the original AMS-Test layout).
   var url;
   if ("{{ tab }}" === "gatePass") {
-    url = "/print/gatepass/?ids=" + ids.join(",") + "&copies=" + copies;
+    var seen = {};
+    var uniqueIds = [];
+    var maxCopies = 1;
+    document.querySelectorAll(".lpp-item:checked").forEach(function (cb) {
+      if (!seen[cb.value]) { seen[cb.value] = true; uniqueIds.push(cb.value); }
+      var sec = parseInt(cb.getAttribute("data-section"), 10);
+      var copiesInput = document.querySelectorAll(".lpp-copies")[sec];
+      var c = Math.max(1, Math.min(99, parseInt(copiesInput ? copiesInput.value : 1, 10) || 1));
+      if (c > maxCopies) maxCopies = c;
+    });
+    url = "/print/gatepass/?ids=" + uniqueIds.join(",") + "&copies=" + maxCopies;
   } else {
+    var ids = rows.map(function (r) { return r.id; });
     url = "/print/labels/?ids=" + ids.join(",");
   }
   window.open(url, "_blank");
@@ -109,4 +159,28 @@ function lppExport() {
   window.location.href = "/label-pass-print/export/?tab={{ tab }}&ids=" + ids.join(",");
 }
 </script>
+
+{% else %}
+{# ---------- STATE B: no records - show a clear "blank page" message ---------- #}
+<div class="card lpp-blank-card">
+  <div class="lpp-blank">
+    <div class="lpp-blank-icon">&#128424;</div>
+    <h2 class="lpp-blank-title">No Display IDs to print yet</h2>
+    <p class="lpp-blank-msg">
+      There are no assets or mobiles in the system, so there is nothing to pick
+      for label or gate-pass printing.
+    </p>
+    <p class="lpp-blank-msg">
+      Add at least one asset (or mobile) on the
+      <a class="lpp-blank-link" href="/assets/">Assets</a> or
+      <a class="lpp-blank-link" href="/mobiles/">Mobiles</a> page, then come back
+      here to pick its Display ID and print a sticker sheet or a gate pass.
+    </p>
+    <div class="lpp-blank-actions">
+      <a class="btn primary" href="/assets/">Go to Assets</a>
+      <a class="btn" href="/mobiles/">Go to Mobiles</a>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

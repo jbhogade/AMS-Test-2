@@ -1,18 +1,31 @@
 {% extends "print/base_print.html" %}
 {% block print_body %}
-<div class="pf-doc">
-  <div class="gp-sheet">
-    {% for c in cards %}
-    <div class="gp-card">
-      <div class="gp-title">Laptop Gate Pass</div>
-      <div class="gp-line">The Laptop Serial No. <strong>{{ c.serial }}</strong>, Asset Code No. <strong class="mono">{{ c.display_id }}</strong> is issued to</div>
-      <div class="gp-line"><strong>{{ c.emp_name }}</strong> (Employee ID <span class="mono">{{ c.emp_code }}</span>)</div>
-      <div class="gp-line">{{ company.address|default:"-" }}</div>
-      <div class="gp-stamp">Stamp &amp; Signature</div>
+{% for page in pages %}
+<div class="gp-sheet">
+  {% for c in page %}
+    {% if c.empty %}
+    <div class="gp-pass gp-pass-empty"></div>
+    {% else %}
+    <div class="gp-pass">
+      <h2 class="gp-pass-title">Laptop Gate Pass</h2>
+      <p class="gp-pass-line">The Laptop Serial No. <strong>{{ c.serial|default:"-" }}</strong>,
+        Asset Code No. <strong>{{ c.display_id|default:"-" }}</strong> is issued to</p>
+      <p class="gp-pass-line"><strong>{{ c.emp_name|default:"-" }}</strong>
+        (Employee ID <strong>{{ c.emp_code|default:"-" }}</strong>)</p>
+      {% if c.company_addr %}
+      <p class="gp-pass-line">{{ c.company_addr }}</p>
+      {% endif %}
+      <p class="gp-pass-stamp">Stamp &amp; Signature</p>
     </div>
-    {% empty %}
-    <div class="gp-card">No Display IDs selected.</div>
-    {% endfor %}
+    {% endif %}
+  {% endfor %}
+</div>
+{% empty %}
+<div class="gp-sheet">
+  <div class="gp-pass">
+    <h2 class="gp-pass-title">Laptop Gate Pass</h2>
+    <p class="gp-pass-line">No Display IDs selected.</p>
   </div>
 </div>
+{% endfor %}
 {% endblock %}

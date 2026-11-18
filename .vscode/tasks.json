@@ -1,0 +1,53 @@
+{
+    // AMS-Test-2 - VS Code tasks (Terminal > Run Task...)
+    // All tasks run inside the project folder and use the venv created by
+    // Setup-AMS-Test-2.bat. If you open the PARENT folder in VS Code instead
+    // of AMS-Test-2 itself, change ${workspaceFolder} to ${workspaceFolder}\\AMS-Test-2.
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run portal (runserver)",
+            "type": "shell",
+            "command": "venv\\Scripts\\python.exe manage.py runserver 0.0.0.0:8000",
+            "options": { "cwd": "${workspaceFolder}" },
+            "isBackground": true,
+            "problemMatcher": [],
+            "group": { "kind": "build", "isDefault": true }
+        },
+        {
+            "label": "Migrate database",
+            "type": "shell",
+            "command": "venv\\Scripts\\python.exe manage.py migrate",
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
+        },
+        {
+            "label": "Repair database (dbrepair)",
+            "type": "shell",
+            "command": "venv\\Scripts\\python.exe manage.py dbrepair",
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
+        },
+        {
+            "label": "Seed admin accounts",
+            "type": "shell",
+            "command": "venv\\Scripts\\python.exe manage.py seed_admins",
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
+        },
+        {
+            "label": "Test SQL connection (dbdoctor)",
+            "type": "shell",
+            "command": "venv\\Scripts\\python.exe manage.py dbdoctor --create-database",
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
+        },
+        {
+            "label": "Import from old AMS-Test",
+            "type": "shell",
+            "command": "venv\\Scripts\\python.exe manage.py import_legacy --legacy-host localhost --legacy-user sa --legacy-name AMS-TEST",
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
+        }
+    ]
+}

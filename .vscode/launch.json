@@ -1,0 +1,44 @@
+{
+    // AMS-Test-2 - Run and Debug (F5) configurations.
+    // Assumes the venv created by Setup-AMS-Test-2.bat (venv\Scripts\python.exe)
+    // and that VS Code opened the AMS-Test-2 folder itself.
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "AMS-Test-2: runserver (debug)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\manage.py",
+            "args": ["runserver", "0.0.0.0:8000", "--noreload"],
+            "django": true,
+            "python": "${workspaceFolder}\\venv\\Scripts\\python.exe",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "AMS-Test-2: migrate (debug)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\manage.py",
+            "args": ["migrate"],
+            "django": true,
+            "python": "${workspaceFolder}\\venv\\Scripts\\python.exe",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "AMS-Test-2: dbrepair (debug)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\manage.py",
+            "args": ["dbrepair"],
+            "django": true,
+            "python": "${workspaceFolder}\\venv\\Scripts\\python.exe",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ]
+}

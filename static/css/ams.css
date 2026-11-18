@@ -383,20 +383,79 @@ dialog.modal.wide { width: min(880px, 96vw); }
 /* =====================================================================
    TILE PICKER (Label / Pass Print)
    ===================================================================== */
-.lpp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
-.lpp-tile { position: relative; border: 1.5px solid var(--border); border-radius: 12px; padding: 10px 12px;
-  background: var(--bg-inset); cursor: pointer; min-height: 96px; display: flex; flex-direction: column; gap: 3px; }
+.lpp-toolbar { display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+  border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.lpp-tabs { display: flex; gap: 4px; flex: 1; min-width: 240px; }
+.lpp-tab { font: inherit; font-size: 0.84rem; font-weight: 600; color: var(--muted);
+  background: transparent; border: 0; padding: 8px 14px; border-radius: 8px 8px 0 0;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.lpp-tab:hover { color: var(--text); background: var(--bg-inset); }
+.lpp-tab.active { color: var(--accent); border-bottom: 3px solid var(--accent);
+  background: var(--accent-soft); }
+.lpp-tab-icon { font-size: 0.95rem; opacity: 0.85; }
+.lpp-toolbar-right { display: flex; align-items: center; gap: 10px; }
+.lpp-count { font-size: 0.78rem; color: var(--muted); padding: 4px 10px;
+  border-radius: 6px; background: var(--bg-inset); font-weight: 600; }
+.lpp-count.has-count { color: var(--accent); background: var(--accent-soft); }
+.btn-icon { font-size: 0.95rem; vertical-align: -1px; margin-right: 2px; }
+
+.lpp-filter { display: flex; gap: 12px; align-items: flex-end; padding: 12px 4px 14px;
+  border-bottom: 1px dashed var(--border); margin-bottom: 6px; flex-wrap: wrap; }
+.lpp-search-form { display: flex; gap: 8px; flex: 1; min-width: 280px; }
+.lpp-search-form .input { flex: 1; min-width: 240px; }
+.lpp-purpose { flex: 1; min-width: 240px; display: flex; align-items: center; }
+.lpp-purpose .input { width: 100%; }
+.lpp-purpose-hint { font-size: 0.78rem; color: var(--muted); line-height: 1.45; }
+.lpp-purpose-hint em { color: var(--text); font-style: normal; font-weight: 600; }
+
+.lpp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.lpp-tile { position: relative; border: 1.5px solid var(--border); border-radius: 12px;
+  background: var(--bg-inset); cursor: pointer; min-height: 102px; display: block;
+  transition: border-color 0.12s ease, background 0.12s ease; }
 .lpp-tile:hover { border-color: var(--accent); }
 .lpp-tile.is-selected { border-color: var(--accent); background: var(--accent-soft); }
-.lpp-tile input { position: absolute; top: 9px; right: 9px; }
-.lpp-tile-id { font-family: Consolas, Menlo, monospace; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.01em; }
-.lpp-tile-name { font-size: 0.74rem; color: var(--text); }
-.lpp-tile-model, .lpp-tile-assigned { font-size: 0.68rem; color: var(--muted); }
-.section-head { display: flex; align-items: center; gap: 10px; margin: 16px 0 9px; }
-.section-head h3 { font-size: 0.86rem; }
-.section-head .meta { color: var(--muted); font-size: 0.72rem; }
-.section-head .copies { margin-left: auto; display: flex; gap: 6px; align-items: center; font-size: 0.74rem; color: var(--muted); }
-.section-head .copies input { width: 60px; }
+.lpp-tile input { position: absolute; top: 10px; right: 10px; width: 16px; height: 16px;
+  cursor: pointer; margin: 0; }
+.lpp-tile-body { padding: 12px 36px 10px 12px; display: flex; flex-direction: column; gap: 3px;
+  pointer-events: none; }
+.lpp-tile-id { font-family: Consolas, Menlo, monospace; font-weight: 700; font-size: 0.84rem;
+  letter-spacing: 0.01em; color: var(--text); word-break: break-all; }
+.lpp-tile-name { font-size: 0.78rem; color: var(--text); font-weight: 500; }
+.lpp-tile-model, .lpp-tile-assigned { font-size: 0.7rem; color: var(--muted); }
+.lpp-tile-assigned::before { content: "→ "; opacity: 0.65; }
+.section-head { display: flex; align-items: center; gap: 12px; margin: 16px 0 9px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.section-head h3 { font-size: 0.86rem; margin: 0; }
+.section-head .meta { color: var(--muted); font-size: 0.74rem; }
+.section-head .copies { margin-left: auto; display: flex; gap: 6px; align-items: center;
+  font-size: 0.74rem; color: var(--muted); font-weight: 500; }
+.section-head .copies input { width: 60px; padding: 4px 6px; }
+.lpp-select-all-label { display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.74rem; color: var(--muted); font-weight: 500; cursor: pointer; }
+.lpp-select-all-label input { width: 14px; height: 14px; cursor: pointer; }
+
+.lpp-empty { padding: 28px 16px; }
+.lpp-hint { display: flex; gap: 12px; margin-top: 22px; padding: 14px 16px;
+  border: 1px dashed var(--border); border-radius: 10px; background: var(--bg-inset); }
+.lpp-hint-icon { font-size: 1.4rem; color: var(--accent); line-height: 1; }
+.lpp-hint-body { font-size: 0.78rem; color: var(--muted); line-height: 1.55; }
+.lpp-hint-body strong { color: var(--text); }
+
+/* ---- Empty-state "blank page" message (Label/Pass Print Master) ---- */
+.lpp-blank-card { padding: 0; }
+.lpp-blank { padding: 70px 24px 64px; text-align: center; max-width: 640px;
+  margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.lpp-blank-icon { width: 96px; height: 96px; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent);
+  display: grid; place-items: center; font-size: 2.6rem; line-height: 1;
+  margin-bottom: 4px; }
+.lpp-blank-title { font-size: 1.18rem; font-weight: 700; color: var(--text);
+  margin: 0; letter-spacing: -0.01em; }
+.lpp-blank-msg { font-size: 0.92rem; color: var(--muted); line-height: 1.6;
+  margin: 0; max-width: 560px; }
+.lpp-blank-link { color: var(--accent); font-weight: 600; text-decoration: none; }
+.lpp-blank-link:hover { text-decoration: underline; }
+.lpp-blank-actions { display: flex; gap: 10px; margin-top: 8px; }
 
 /* =====================================================================
    LOGIN PAGE

@@ -3,23 +3,32 @@ REM -------------------------------------------------------------
 REM  AMS-Test-2 - SQL Server setup (Windows, one-click)
 REM
 REM  This script:
-REM    1. Asks for the SQL Server host + SA password
-REM    2. Creates the empty AMS-TEST-2 database (via sqlcmd)
+REM    1. Asks for the SQL Server connection:
+REM         host            default localhost (may include a named
+REM                         instance, e.g. localhost\SQLEXPRESS)
+REM         port            default 1433 - leave BLANK for named instance
+REM         login user      default sa - leave BLANK for Windows
+REM                         Authentication (no password needed)
+REM         password        only asked for SQL logins
+REM    2. Creates the empty AMS-TEST-2 database (sqlcmd, or the built-in
+REM       dbdoctor --create-database when sqlcmd is not available)
 REM    3. Creates a venv, installs requirements (incl. mssql-django + pyodbc)
-REM    4. Runs `python manage.py migrate` (Django creates all tables)
-REM    5. Runs `python manage.py seed_admins` (creates the two login accounts)
+REM    4. Runs the DATABASE DOCTOR to verify the connection and print
+REM       concrete fixes if something is still wrong
+REM    5. Runs `python manage.py migrate`  (Django creates all tables;
+REM       if the database already holds tables, dbrepair syncs them)
+REM    6. Runs `python manage.py seed_admins` (creates the two login accounts)
 REM
-REM  Alternative (DBA pre-creates tables):
-REM    Instead of letting Django create the tables, run
-REM    sqlserver\02-create-all-tables.sql via SSMS, then run this script
-REM    and choose "N" at the migrate prompt (use --fake).
+REM  Alternative (DBA pre-creates tables or an old backup was restored):
+REM    Answer "N" at the migrate prompt - dbrepair adds whatever is
+REM    missing (tables AND columns) and marks the migrations applied.
 REM
 REM  Pre-requisites:
 REM    - Python 3.11+ (python.org)  with "Add python.exe to PATH" ticked
 REM    - Microsoft "ODBC Driver 18 for SQL Server" installed
 REM      (https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server)
 REM    - sqlcmd (SQL Server command-line tools) OR SSMS installed
-REM      (https://learn.microsoft.com/sql/ssms/download-sql-server-management-studio-ssms)
+REM      (optional - dbdoctor can create the database without it)
 REM -------------------------------------------------------------
 title AMS-Test-2 - SQL Server Setup
 cd /d "%~dp0"
@@ -37,62 +46,48 @@ if errorlevel 1 (
     exit /b 1
 )
 
-where sqlcmd >nul 2>nul
-if errorlevel 1 (
-    echo sqlcmd was not found. Install SQL Server Command Line Tools
-    echo (msodbcsql18 + mssql-tools18) from learn.microsoft.com
-    pause
-    exit /b 1
-)
-
 REM -------------------------------------------------------------
 REM  Collect SQL Server connection details
 REM -------------------------------------------------------------
-set /p AMS_DB_HOST=SQL Server host (default: localhost): 
+set /p AMS_DB_HOST=SQL Server host or named instance (default: localhost): 
 if "%AMS_DB_HOST%"=="" set AMS_DB_HOST=localhost
 
-set /p AMS_DB_PORT=Port (default: 1433): 
-if "%AMS_DB_PORT%"=="" set AMS_DB_PORT=1433
+REM  A named instance (host\SQLEXPRESS) has no fixed port - the SQL
+REM  Server Browser service resolves it, so the port stays blank.
+echo %AMS_DB_HOST% | findstr /C:"\\" >nul
+if not errorlevel 1 set AMS_DB_PORT=
 
-set /p AMS_DB_USER=Login user (default: sa): 
-if "%AMS_DB_USER%"=="" set AMS_DB_USER=sa
+set /p AMS_DB_PORT=Port (default 1433 - leave BLANK for a named instance): 
 
-set /p AMS_DB_PASSWORD=Login password: 
+REM  A named instance combined with a port is invalid - drop the port.
+if not "%AMS_DB_HOST:*\=%"=="%AMS_DB_HOST%" set AMS_DB_PORT=
+REM  No instance and no port -> fall back to the default 1433.
+if "%AMS_DB_PORT%"=="" if "%AMS_DB_HOST:*\=%"=="%AMS_DB_HOST%" set AMS_DB_PORT=1433
+
+set /p AMS_DB_USER=Login user (default: sa - leave BLANK for Windows Authentication): 
+
+if "%AMS_DB_USER%"=="" (
+    set AMS_DB_TRUSTED=yes
+    set AMS_DB_PASSWORD=
+) else (
+    set AMS_DB_TRUSTED=no
+    set /p AMS_DB_PASSWORD=Login password: 
+)
 
 REM -------------------------------------------------------------
 REM  Create the empty AMS-TEST-2 database
 REM -------------------------------------------------------------
 echo.
 echo --- Creating AMS-TEST-2 database (if it does not exist) -------
-sqlcmd -S "%AMS_DB_HOST%,%AMS_DB_PORT%" -U "%AMS_DB_USER%" -P "%AMS_DB_PASSWORD%" -b -i "sqlserver\01-create-database.sql"
-if errorlevel 1 (
-    echo.
-    echo Database creation failed. Check SQL Server is running and the
-    echo SA password is correct. Then re-run this script.
-    pause
-    exit /b 1
+if "%AMS_DB_TRUSTED%"=="yes" (
+    sqlcmd -S "%AMS_DB_HOST%" -E -b -i "sqlserver\01-create-database.sql" 2>nul
+) else (
+    sqlcmd -S "%AMS_DB_HOST%,%AMS_DB_PORT%" -U "%AMS_DB_USER%" -P "%AMS_DB_PASSWORD%" -b -i "sqlserver\01-create-database.sql" 2>nul
 )
-
-REM -------------------------------------------------------------
-REM  Save the connection to db-config.bat so it PERSISTS -
-REM  run-django.bat loads this file automatically, so the portal
-REM  keeps using SQL Server even after you close this window.
-REM -------------------------------------------------------------
-set AMS_DB=mssql
-set AMS_DB_NAME=AMS-TEST-2
-
-> "db-config.bat" echo @echo off
->> "db-config.bat" echo REM Auto-generated by Setup-SQL-Server.bat - switch AMS-Test-2 to SQL Server.
->> "db-config.bat" echo set AMS_DB=mssql
->> "db-config.bat" echo set AMS_DB_NAME=%AMS_DB_NAME%
->> "db-config.bat" echo set AMS_DB_HOST=%AMS_DB_HOST%
->> "db-config.bat" echo set AMS_DB_PORT=%AMS_DB_PORT%
->> "db-config.bat" echo set AMS_DB_USER=%AMS_DB_USER%
->> "db-config.bat" echo set AMS_DB_PASSWORD=%AMS_DB_PASSWORD%
-
-echo.
-echo Saved connection to db-config.bat (loaded automatically by run-django.bat)
-echo Using: AMS_DB=%AMS_DB%  AMS_DB_NAME=%AMS_DB_NAME%  HOST=%AMS_DB_HOST%
+if errorlevel 1 (
+    echo sqlcmd could not create the database directly.
+    echo Trying the built-in dbdoctor instead ...
+)
 
 REM -------------------------------------------------------------
 REM  Create the virtualenv and install requirements
@@ -111,28 +106,90 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 
 REM -------------------------------------------------------------
+REM  Save the connection to db-config.bat so it PERSISTS -
+REM  run-django.bat loads this file automatically, so the portal
+REM  keeps using SQL Server even after you close this window.
+REM -------------------------------------------------------------
+set AMS_DB=mssql
+set AMS_DB_NAME=AMS-TEST-2
+
+> "db-config.bat" echo @echo off
+>> "db-config.bat" echo REM Auto-generated by Setup-SQL-Server.bat - switch AMS-Test-2 to SQL Server.
+>> "db-config.bat" echo set AMS_DB=mssql
+>> "db-config.bat" echo set AMS_DB_NAME=%AMS_DB_NAME%
+>> "db-config.bat" echo set AMS_DB_HOST=%AMS_DB_HOST%
+if not "%AMS_DB_PORT%"=="" >> "db-config.bat" echo set AMS_DB_PORT=%AMS_DB_PORT%
+if "%AMS_DB_TRUSTED%"=="yes" (
+    >> "db-config.bat" echo set AMS_DB_TRUSTED_CONNECTION=yes
+) else (
+    >> "db-config.bat" echo set AMS_DB_USER=%AMS_DB_USER%
+    >> "db-config.bat" echo set AMS_DB_PASSWORD=%AMS_DB_PASSWORD%
+)
+
+echo.
+echo Saved connection to db-config.bat (loaded automatically by run-django.bat)
+echo Using: AMS_DB=%AMS_DB%  AMS_DB_NAME=%AMS_DB_NAME%  HOST=%AMS_DB_HOST%
+if not "%AMS_DB_PORT%"=="" echo        Port: %AMS_DB_PORT%
+if "%AMS_DB_TRUSTED%"=="yes" echo        Login: Windows Authentication
+
+REM -------------------------------------------------------------
+REM  DATABASE DOCTOR - verifies every layer and prints fixes
+REM -------------------------------------------------------------
+echo.
+echo --- Verifying the connection (database doctor) ---------------
+python manage.py dbdoctor --create-database
+if errorlevel 1 (
+    echo.
+    echo The connection test found a problem. Apply the printed fixes
+    echo and re-run this script - nothing else was changed.
+    echo You can also test at any time with Test-SQL-Connection.bat.
+    pause
+    exit /b 1
+)
+
+REM -------------------------------------------------------------
 REM  Ask whether to let Django create the tables (recommended)
 REM  or whether the DBA already ran 02-create-all-tables.sql
 REM -------------------------------------------------------------
 echo.
 echo Let Django create all tables now (recommended) ?
 echo   Y = run `python manage.py migrate`    (Django creates every table)
-echo   N = tables already exist             (run `migrate --fake` only)
+echo   N = tables already exist              (dbrepair syncs + records)
 set /p CHOICE=Choice [Y/n]: 
 
 if /I "%CHOICE%"=="N" (
     echo.
-    echo --- Marking migrations as already applied -----------------
-    python manage.py migrate --fake
+    echo --- Syncing the existing tables (dbrepair^) -----------------
+    REM  dbrepair adds missing tables/columns to the existing tables
+    REM  and marks every migration as applied - safer than a bare
+    REM  `migrate --fake`, which cannot add missing columns.
+    python manage.py dbrepair
 ) else (
     echo.
     echo --- Running `python manage.py migrate` (creates all tables) ---
     python manage.py migrate
+    if errorlevel 1 (
+        echo.
+        echo migrate hit an existing-schema conflict (e.g. error 2714
+        echo "There is already an object named ..."^) - repairing with
+        echo dbrepair and retrying...
+        echo.
+        python manage.py dbrepair
+        if errorlevel 1 (
+            echo dbrepair could not fix everything - see the messages above.
+            pause
+            exit /b 1
+        )
+        echo.
+        echo --- Retrying migrate (should report: No migrations to apply^) ---
+        python manage.py migrate
+    )
 )
 
 if errorlevel 1 (
     echo.
     echo Migration failed. Check the error above and re-run this script.
+    echo Tip: run Repair-Database.bat (or Test-SQL-Connection.bat^) first.
     pause
     exit /b 1
 )
@@ -145,7 +202,9 @@ echo.
 echo =============================================================
 echo   SQL Server setup complete.
 echo.
-echo   Database:  AMS-TEST-2  on %AMS_DB_HOST%,%AMS_DB_PORT%
+echo   Database:  AMS-TEST-2  on %AMS_DB_HOST%
+if not "%AMS_DB_PORT%"=="" echo              (port %AMS_DB_PORT%)
+if "%AMS_DB_TRUSTED%"=="yes" echo              (Windows Authentication)
 echo   Tables:     created by Django's migrate (or pre-created)
 echo   Logins:     operator.sys / Sr#Ops@2026   (Supreme Root)
 echo               testadmin   / Admin@#$12345  (Super Root)
@@ -157,5 +216,6 @@ echo    Setup-AMS-Test-2.bat which removes it.)
 echo.
 echo   Existing data in db.sqlite3? Run Copy-Data-SQLite-to-SQLServer.bat
 echo   once to move it into AMS-TEST-2.
+echo   Old AMS-Test data?          Run Import-From-AMS-Test.bat
 echo =============================================================
 pause

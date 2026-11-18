@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual env
+venv/
+.venv/
+env/
+
+# Django local state
+db.sqlite3
+db.sqlite3-journal
+*.sqlite3
+media/company/*
+!media/company/.gitkeep
+
+# Logs / OS
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# Build artifacts
+*.zip
+*.bak

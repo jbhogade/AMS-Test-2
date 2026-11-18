@@ -25,9 +25,15 @@
   document.getElementById("admin-tabs").addEventListener("click", function (e) {
     var btn = e.target.closest("button");
     if (!btn) return;
+    var tab = btn.getAttribute("data-tab");
+    // Label/Pass Print Master is a complex multi-tab page of its own -
+    // navigate to the standalone page rather than loading it into the hub panel.
+    if (tab === "labelPassPrint") {
+      window.location.href = "/label-pass-print/";
+      return;
+    }
     document.querySelectorAll("#admin-tabs button").forEach(function (b) { b.classList.remove("active"); });
     btn.classList.add("active");
-    var tab = btn.getAttribute("data-tab");
     var url;
     if (tab === "company") url = "/company/?hub=1";
     else if (tab === "vendors") url = "/vendors/?hub=1";
@@ -35,7 +41,6 @@
     else if (tab === "accessRights") url = "/access-rights/?hub=1";
     else if (tab === "roleAccess") url = "/role-access/?hub=1";
     else if (tab === "log") url = "/logs/?hub=1";
-    else if (tab === "labelPassPrint") url = "/label-pass-print/?hub=1";
     else if (tab.indexOf("master:") === 0) url = "/masters/" + tab.slice(7) + "/panel/";
     else url = "/company/?hub=1";
     panel.setAttribute("hx-get", url);

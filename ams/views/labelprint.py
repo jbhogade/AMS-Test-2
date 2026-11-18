@@ -30,6 +30,13 @@ def _sections(kind):
 
 @ams_view("labelPassPrint")
 def label_pass_print(request):
+    # Label/Pass Print Master is a complex multi-tab page of its own
+    # (toolbar, tile picker, hint panel, blank-state). It does not fit
+    # inside the System Admin hub panel - if the hub requests it via
+    # ?hub=1, just redirect to the standalone page so the user gets the
+    # full interactive experience instead of a broken partial.
+    if request.GET.get("hub"):
+        return redirect("/label-pass-print/")
     tab = request.GET.get("tab", "displayId")
     q = request.GET.get("q", "").strip()
     sections = _sections(tab)
@@ -49,10 +56,8 @@ def label_pass_print(request):
         counts[s["title"]] = len(s["items"])
     ctx = {
         "tab": tab, "sections": sections, "q": q, "counts": counts,
-        "can_write": request.ams_can_write, "hub": request.GET.get("hub"),
+        "can_write": request.ams_can_write,
     }
-    if request.GET.get("hub"):
-        return render(request, "partials/label_content.html", ctx)
     return render(request, "label_pass_print.html", ctx)
 
 

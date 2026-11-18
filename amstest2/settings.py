@@ -3,26 +3,50 @@ Django settings for the AMS-Test-2 project.
 
 AMS-Test-2 - Asset Management System, Django-only rebuild of AMS-Test.
 
-#-------------- Start Code for : DATABASE (SWITCHABLE) ----------------
-The portal runs on SQLite by default (zero config, file-based). To run
-against SQL Server (same engine as the original AMS-Test) set the
-environment variable AMS_DB=mssql before starting Django:
+#-------------- Start Code for : DATABASE (SQL SERVER DEFAULT) ----------------
+MS SQL Server is the DEFAULT data store (same engine as the original
+AMS-Test). All business data lives in the AMS-TEST-2 database.
 
-    Windows (cmd):     set AMS_DB=mssql
-    Windows (PS):      $env:AMS_DB="mssql"
+Connection settings are resolved in this order:
+  1. Environment variables  (AMS_DB_NAME / AMS_DB_HOST / AMS_DB_PORT /
+     AMS_DB_USER / AMS_DB_PASSWORD / AMS_DB_DRIVER)
+  2. db-config.bat in the project folder (written by Setup-SQL-Server.bat,
+     and loaded automatically by run-django.bat)
+  3. Defaults: AMS-TEST-2 @ localhost,1433, user sa
 
-Then install the SQL Server requirements:
-    pip install mssql-django pyodbc
-...and make sure "ODBC Driver 18 for SQL Server" is installed. The
-database name used is AMS-TEST-2. On first run Django creates and
-seeds everything (python manage.py migrate + seed_admins).
-#-------------- End of the code : DATABASE (SWITCHABLE) ----------------
+First run:  python manage.py migrate   (Django creates all tables)
+            python manage.py seed_admins
+Requires "ODBC Driver 18 for SQL Server" + pip install mssql-django pyodbc
+(Setup-SQL-Server.bat does all of this for you).
+
+Fallback: set AMS_DB=sqlite (or AMS_DB=SQLITE) to run on the file-based
+SQLite database db.sqlite3 instead - handy for quick demos without a
+SQL Server instance. Copy-Data-SQLite-to-SQLServer.bat moves SQLite data
+into SQL Server later.
+
+Connection trouble? Run the built-in diagnostics:
+    python manage.py dbdoctor        (or double-click Test-SQL-Connection.bat)
+It tests the connection step by step (ODBC driver, network, login, database)
+and prints concrete fixes for every common error.
+
+Database already holds tables (e.g. you restored the old AMS-Test backup
+over AMS-TEST-2)? Plain `python manage.py migrate` now detects that, runs
+the schema sync (dbrepair) automatically and never fails with error 2714
+"There is already an object named 'ams_company'". The manual command still
+exists:
+    python manage.py dbrepair        (or double-click Repair-Database.bat)
+It adds missing tables/columns and marks every migration applied, without
+touching existing rows. A missing AMS-TEST-2 database is created by
+migrate automatically as well (ODBC error 4060).
+#-------------- End of the code : DATABASE (SQL SERVER DEFAULT) ----------------
 """
 
 import os
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+from . import dbconfig
+
+BASE_DIR = dbconfig.BASE_DIR
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "ams-test-2-django-rebuild-signing-key-change-me-in-production"
@@ -74,34 +98,62 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "amstest2.wsgi.application"
 
-#-------------- Start Code for : DATABASE (SWITCHABLE) ----------------
-# SQLite by default. Set AMS_DB=mssql to switch to SQL Server.
-#-------------- End of the code : DATABASE (SWITCHABLE) ----------------
+#-------------- Start Code for : DATABASE (SQL SERVER DEFAULT) ----------------
+# SQL Server by default; AMS_DB=sqlite falls back to the file db.sqlite3.
+# The full resolution logic (env vars -> db-config.bat -> defaults, named
+# instances, Windows Authentication, ODBC driver auto-fallback) lives in
+# amstest2/dbconfig.py and is shared with the dbdoctor diagnostics command.
+#-------------- End of the code : DATABASE (SQL SERVER DEFAULT) ----------------
 
-if os.environ.get("AMS_DB", "sqlite").lower() in ("mssql", "sqlserver", "sql-server"):
+_DB = dbconfig.resolve_db()
+
+if _DB["engine"] == "mssql":
+    _OPTIONS = {
+        "extra_params": _DB["extra_params"],
+        # Login timeout in seconds: fail fast with a clear error instead of
+        # hanging for minutes when the server is unreachable.
+        "connection_timeout": dbconfig.CONNECT_TIMEOUT,
+    }
+    if _DB["driver"]:
+        # Pinned driver (AMS_DB_DRIVER was set) - used verbatim.
+        _OPTIONS["driver"] = _DB["driver"]
+    # No explicit driver otherwise: mssql-django then defaults to
+    # "ODBC Driver 18 for SQL Server" and automatically retries with
+    # "ODBC Driver 17 for SQL Server" if 18 is not installed.
+    #
+    # PORT may be None (named instance like localhost\SQLEXPRESS):
+    # mssql-django omits the port then and the SQL Server Browser service
+    # resolves the instance. An empty USER activates Windows Authentication.
     DATABASES = {
         "default": {
             "ENGINE": "mssql",
-            "NAME": os.environ.get("AMS_DB_NAME", "AMS-TEST-2"),
-            "USER": os.environ.get("AMS_DB_USER", "sa"),
-            "PASSWORD": os.environ.get("AMS_DB_PASSWORD", ""),
-            "HOST": os.environ.get("AMS_DB_HOST", "localhost"),
-            "PORT": os.environ.get("AMS_DB_PORT", "1433"),
-            "OPTIONS": {
-                "driver": os.environ.get("AMS_DB_DRIVER", "ODBC Driver 18 for SQL Server"),
-                "extra_params": "TrustServerCertificate=yes",
-            },
+            "NAME": _DB["db_name"],
+            "USER": _DB["user"],
+            "PASSWORD": _DB["password"],
+            "HOST": _DB["host"],
+            "PORT": _DB["port"] or "",
+            "OPTIONS": _OPTIONS,
         }
     }
 else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
+            "NAME": _DB["db_name"],
         }
     }
 
-# Password validation (Django PBKDF2-SHA256 matches the original portal's hasher)
+# Password validation.
+# The first hasher is Django's default (used for all new/changed passwords).
+# The second one verifies hashes imported from the original AMS-Test
+# database (ams_users.password_hash / password_salt) so every imported
+# user can log in with the OLD password; Django silently upgrades the
+# stored hash to the default hasher on the first successful login.
+
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "ams.hashers.AmsLegacyHasher",
+]
 
 AUTH_PASSWORD_VALIDATORS = []
 

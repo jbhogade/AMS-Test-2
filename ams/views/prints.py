@@ -163,25 +163,53 @@ def sim_issue_form(request, pk):
 
 @login_required
 def gate_pass(request):
-    """Laptop Gate Pass cards - ids=1,2,3&copies=2"""
+    """A4 Laptop Gate Pass - landscape sheet with 8 slips per page
+    (2 columns x 4 rows), with cut spacing between slips so the user can
+    cut the printed sheet into individual passes. ids=1,2,3&copies=2
+
+    The view chunks the cards into pages of 8 (padding the final page
+    with empty placeholders so the grid stays 2x4)."""
     _gate(request, "labelPassPrint")
     ids = [s for s in request.GET.get("ids", "").split(",") if s.strip()]
     copies = max(1, min(99, int(request.GET.get("copies", "1") or 1)))
+    company = Company.get_solo()
+    # Company address prints on the gate pass only (per Company model note),
+    # as the issuing premises line.
+    company_addr = (company.address or "").strip()
     items = []
     for pk in ids:
         a = Asset.objects.filter(pk=pk).first()
-        if a:
-            emp = a.assigned_to
-            items.append({
-                "serial": a.serial_number or "-",
-                "display_id": print_asset_id(a),
-                "emp_name": emp.name if emp else "Unassigned",
-                "emp_code": (emp.emp_id or emp.ams_id) if emp else "-",
-            })
+        if not a:
+            continue
+        emp = a.assigned_to
+        items.append({
+            "serial": a.serial_number or "-",
+            "display_id": print_asset_id(a) or a.base_display_id or a.ams_asset_id or "-",
+            "emp_name": emp.name if emp else "Unassigned",
+            "emp_code": (emp.ams_id or (emp.emp_id if hasattr(emp, "emp_id") else "") or "-") if emp else "-",
+            "company_addr": company_addr,
+        })
     cards = []
     for it in items:
-        cards.extend([it] * copies)
-    ctx = {"cards": cards, "company": Company.get_solo(), "title": "Gate Pass"}
+        # Multiple copies = duplicate the same slip (e.g. one for office, one
+        # for the bearer). Each slip is identical - no Original/Duplicate label
+        # is shown, matching the original AMS-Test layout.
+        for _ in range(copies):
+            cards.append(dict(it))
+    # Chunk into pages of 8 (2 cols x 4 rows). Pad the last page with empty
+    # placeholders so the grid stays 2x4 even when the count is not a multiple
+    # of 8 - keeps the cut layout consistent on every printed sheet.
+    PER_PAGE = 8
+    pages = []
+    for i in range(0, max(len(cards), 1), PER_PAGE):
+        chunk = cards[i:i + PER_PAGE]
+        # pad with empty placeholder cards so every page renders a full 2x4 grid
+        while len(chunk) < PER_PAGE:
+            chunk.append({"empty": True})
+        pages.append(chunk)
+    if not pages:
+        pages = [[{"empty": True}] * PER_PAGE]
+    ctx = {"pages": pages, "company": company, "title": "Laptop Gate Pass"}
     return render(request, "print/gatepass.html", ctx)
 
 
@@ -194,8 +222,13 @@ def display_id_labels(request):
     labels = []
     for pk in ids:
         a = Asset.objects.filter(pk=pk).first()
-        if a:
-            labels.extend([print_asset_id(a)] * copies)
+        if not a:
+            continue
+        # never render an empty label - fall back through the full chain
+        label = print_asset_id(a) or a.base_display_id or a.ams_asset_id
+        if not label:
+            label = f"#{a.pk}"
+        labels.extend([label] * copies)
     per_page = 7 * 16
     pages = []
     for i in range(0, len(labels), per_page):

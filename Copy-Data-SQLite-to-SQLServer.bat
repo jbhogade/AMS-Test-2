@@ -91,7 +91,10 @@ if errorlevel 1 (
 )
 
 echo.
-echo Step 5 of 6 - re-seeding login accounts (idempotent) ...
+echo Step 5 of 6 - restoring migration markers + seeding logins ...
+REM (flush empties django_migrations too - `migrate --fake` re-records
+REM  them so future `migrate` calls stay no-ops; seed_admins is idempotent)
+python manage.py migrate --fake
 python manage.py seed_admins
 
 echo.

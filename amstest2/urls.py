@@ -91,10 +91,14 @@ urlpatterns = [
     path("accessories/save/", catalog.accessory_save, name="accessory_save"),
     path("accessories/<int:pk>/delete/", catalog.accessory_delete, name="accessory_delete"),
     path("accessories/<int:pk>/toggle/", catalog.accessory_toggle, name="accessory_toggle"),
+    path("accessories/csv/<str:action>/", catalog.accessory_csv, name="accessory_csv"),
+    path("accessories/import/", catalog.accessory_import, name="accessory_import"),
     path("vendors/", catalog.vendors, name="vendors"),
     path("vendors/save/", catalog.vendor_save, name="vendor_save"),
     path("vendors/<int:pk>/delete/", catalog.vendor_delete, name="vendor_delete"),
     path("vendors/<int:pk>/toggle/", catalog.vendor_toggle, name="vendor_toggle"),
+    path("vendors/csv/<str:action>/", catalog.vendor_csv, name="vendor_csv"),
+    path("vendors/import/", catalog.vendor_import, name="vendor_import"),
 
     # system admin + company + users + access + roles
     path("system-admin/", adminpages.system_admin, name="system_admin"),
